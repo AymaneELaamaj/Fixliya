@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-// [NORME] Import du Service
+// Ajoutez 'Link' dans les accolades
+import { useNavigate, Link } from 'react-router-dom';// [NORME] Import du Service
 import { loginUser } from "../services/authService";
 
 export default function Login() {
@@ -116,8 +116,11 @@ export default function Login() {
         </form>
 
         <p style={{ marginTop: '1.5rem', color: '#666', fontSize: '14px' }}>
-          Pas encore de compte ? <span style={{ color: '#005596', cursor: 'pointer', fontWeight: 'bold' }}>S'inscrire</span>
-        </p>
+  Pas encore de compte ?{' '}
+  <Link to="/register" style={{ color: '#005596', fontWeight: 'bold', textDecoration: 'none' }}>
+    S'inscrire
+  </Link>
+</p>
       </div>
     </div>
   );
