@@ -1,6 +1,9 @@
 // src/App.jsx
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
+import Register from './pages/Register';
+import StudentHome from './pages/StudentHome';
+import CreateTicket from './pages/CreateTicket';
 import { AuthProvider } from './contexts/AuthContext';
 
 function App() {
@@ -13,11 +16,13 @@ function App() {
           
           {/* La page Login */}
           <Route path="/login" element={<Login />} />
-          
+          <Route path="/register" element={<Register />} /> 
+          <Route path="/app/student" element={<StudentHome />} />
+          <Route path="/create-ticket" element={<CreateTicket />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
   );
 }
-  
+
 export default App;

@@ -1,26 +1,30 @@
-// src/pages/Login.jsx
 import React, { useState } from 'react';
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../firebase";
 import { useNavigate } from 'react-router-dom';
+// [NORME] Import du Service
+import { loginUser } from "../services/authService";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  
-  // const navigate = useNavigate(); 
+  const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
+    
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      alert("✅ Connexion RÉUSSIE !");
-      // navigate('/dashboard'); 
+      // [NORME] Appel Service
+      await loginUser(email, password);
+      
+      // Ici, on pourrait ajouter une logique pour vérifier le rôle
+      // et rediriger vers /admin ou /student
+      alert("Connexion réussie !");
+      navigate('/app/student'); 
+      
     } catch (err) {
       console.error(err);
-      setError("Erreur : " + err.message);
+      setError("Erreur de connexion : Vérifiez vos identifiants.");
     }
   };
 
