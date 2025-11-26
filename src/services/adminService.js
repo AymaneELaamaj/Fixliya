@@ -1,6 +1,6 @@
 // src/services/adminService.js
 import { db } from "../firebase";
-import { collection, query, getDocs, doc, updateDoc, where, setDoc } from "firebase/firestore";
+import { collection, query, getDocs, doc, updateDoc, where, setDoc, deleteDoc } from "firebase/firestore";
 import { initializeApp, getApp, deleteApp } from "firebase/app";
 import { getAuth, createUserWithEmailAndPassword, signOut } from "firebase/auth";
 
@@ -79,4 +79,25 @@ export const createArtisanAccount = async (artisanData) => {
   } finally {
     if (secondaryApp) await deleteApp(secondaryApp); // Nettoyage
   }
+};
+
+/**
+ * 5. Modifier un Artisan (Gestion - Sec 3.2)
+ */
+export const updateArtisan = async (artisanId, artisanData) => {
+  const artisanRef = doc(db, "users", artisanId);
+  await updateDoc(artisanRef, {
+    prenom: artisanData.prenom,
+    nom: artisanData.nom,
+    email: artisanData.email,
+    specialite: artisanData.specialite,
+    updatedAt: new Date().toISOString()
+  });
+};
+
+/**
+ * 6. Supprimer un Artisan (Gestion - Sec 3.2)
+ */
+export const deleteArtisan = async (artisanId) => {
+  await deleteDoc(doc(db, "users", artisanId));
 };
