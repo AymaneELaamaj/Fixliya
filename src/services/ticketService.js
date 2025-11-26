@@ -29,29 +29,36 @@ export const getStudentTickets = async (studentId) => {
 /**
  * 2. Créer un ticket avec Image (Écriture Complexe)
  */
-export const createTicket = async (ticketData, imageFile) => {
+
+
+// Note : J'ai retiré les imports de Storage
+
+/**
+ * Crée un ticket (Version temporaire SANS image)
+ */
+export const createTicket = async (ticketData) => {
   try {
-    let photoUrl = "";
+    // On saute l'étape d'upload pour l'instant
 
-    // A. Si l'étudiant a mis une photo, on l'upload d'abord dans Storage
-    // if (imageFile) {
-    //   // On crée un nom unique pour l'image (ex: tickets/12345_photo.jpg)
-    //   const storageRef = ref(storage, `tickets/${Date.now()}_${imageFile.name}`);
+    // 2. Préparation de l'objet Ticket
+    const newTicket = {
+      studentId: ticketData.studentId, 
+      studentName: ticketData.studentName,
+      location: ticketData.location, 
+      category: ticketData.category, // Plomberie, Elec, etc. [cite: 22]
+      description: ticketData.description,
       
-    //   // On envoie le fichier
-    //   const uploadResult = await uploadBytes(storageRef, imageFile);
+      // PLACEHOLDER : On met une fausse image pour l'instant
+      imageUrl: "https://placehold.co/600x400?text=Image+Non+Disponible", 
       
-    //   // On récupère l'URL publique (le lien http...)
-    //   photoUrl = await getDownloadURL(uploadResult.ref);
-    // }
+      isUrgent: ticketData.isUrgent, // [cite: 24]
+      status: "pending", // "En attente" [cite: 28]
+      createdAt: new Date().toISOString()
+    };
 
-    // B. On crée le document Ticket dans Firestore
-    await addDoc(collection(db, "tickets"), {
-      ...ticketData,        // Titre, description, catégorie...
-      photoUrl: photoUrl,   // Le lien de l'image
-      status: "en_attente",
-      dateCreation: new Date().toISOString()
-    });
+    // 3. Sauvegarde dans Firestore
+    await addDoc(collection(db, "tickets"), newTicket);
+    return true;
 
   } catch (error) {
     console.error("Erreur création ticket:", error);

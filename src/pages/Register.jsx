@@ -1,75 +1,76 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-// [NORME] On n'importe plus Firebase ici !
-// On importe notre Service
 import { registerUser } from "../services/authService";
 
 export default function Register() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    prenom: "", nom: "", email: "", password: "",
-    pavillon: "A", chambre: ""
+    prenom: "",
+    nom: "",
+    email: "",
+    telephone: "", // 
+    password: "",
+    confirmPassword: "",
+    pavillon: "",
+    chambre: ""
   });
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleRegister = async (e) => {
     e.preventDefault();
     setError("");
-    setLoading(true);
+
+    if (formData.password !== formData.confirmPassword) {
+      return setError("Les mots de passe ne correspondent pas.");
+    }
 
     try {
-      // [NORME] Appel du Service (Propre et agnostique)
       await registerUser(formData);
-      
       alert("Compte créé avec succès !");
-      navigate('/app/student'); // Redirection directe
-
+      // Redirection vers le Login pour la "Connexion Unique" [cite: 19]
+      navigate('/login'); 
     } catch (err) {
       console.error(err);
-      setError("Erreur : " + err.message);
-    } finally {
-      setLoading(false);
+      setError("Erreur lors de l'inscription. Vérifiez les champs.");
     }
   };
-
-
 
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <h1 style={styles.title}>Inscription FixLiya</h1>
-        
+        <h1 style={styles.title}>Inscription Étudiant</h1>
         {error && <div style={styles.error}>{error}</div>}
-
+        
         <form onSubmit={handleRegister} style={styles.form}>
+          <div style={styles.row}>
+            <input name="prenom" placeholder="Prénom" onChange={handleChange} style={styles.input} required />
+            <input name="nom" placeholder="Nom" onChange={handleChange} style={styles.input} required />
+          </div>
+
+          <input type="email" name="email" placeholder="Email étudiant" onChange={handleChange} style={styles.input} required />
           
-          <div style={styles.row}>
-            <input name="prenom" placeholder="Prénom" value={formData.prenom} onChange={handleChange} style={styles.input} required />
-            <input name="nom" placeholder="Nom" value={formData.nom} onChange={handleChange} style={styles.input} required />
-          </div>
-
-          <input name="email" type="email" placeholder="Email école" value={formData.email} onChange={handleChange} style={styles.input} required />
-          <input name="password" type="password" placeholder="Mot de passe (6+ carac.)" value={formData.password} onChange={handleChange} style={styles.input} required />
+          {/* Nouveau champ Téléphone requis par le PDF  */}
+          <input type="tel" name="telephone" placeholder="Téléphone" onChange={handleChange} style={styles.input} required />
 
           <div style={styles.row}>
-            <select name="batiment" value={formData.batiment} onChange={handleChange} style={styles.input}>
-              <option value="A">batiment A</option>
-              <option value="B">batiment B</option>
-              <option value="C">batiment C</option>
-              <option value="Filles">batiment Filles</option>
+            <select name="pavillon" onChange={handleChange} style={styles.select} required>
+              <option value="">Choisir Pavillon</option>
+              <option value="A">Pavillon A</option>
+              <option value="B">Pavillon B</option>
+              <option value="C">Pavillon C</option>
+              <option value="D">Pavillon D</option>
             </select>
-            <input name="chambre" placeholder="N° Chambre" value={formData.chambre} onChange={handleChange} style={styles.input} required />
+            <input name="chambre" placeholder="N° Chambre" onChange={handleChange} style={styles.input} required />
           </div>
 
-          <button type="submit" disabled={loading} style={styles.button}>
-            {loading ? "Création..." : "S'inscrire"}
-          </button>
+          <input type="password" name="password" placeholder="Mot de passe" onChange={handleChange} style={styles.input} required />
+          <input type="password" name="confirmPassword" placeholder="Confirmer mot de passe" onChange={handleChange} style={styles.input} required />
+
+          <button type="submit" style={styles.button}>S'inscrire</button>
         </form>
 
         <p style={styles.footer}>
@@ -80,15 +81,15 @@ export default function Register() {
   );
 }
 
-// Styles CSS-in-JS (Pour garder le code propre)
 const styles = {
-  container: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0f2f5', padding: '20px' },
-  card: { width: '100%', maxWidth: '400px', backgroundColor: 'white', padding: '2rem', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', textAlign: 'center' },
+  container: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0f2f5' },
+  card: { width: '90%', maxWidth: '450px', backgroundColor: 'white', padding: '2rem', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', textAlign: 'center' },
   title: { color: '#005596', marginBottom: '1.5rem', fontSize: '24px' },
   form: { display: 'flex', flexDirection: 'column', gap: '1rem' },
-  row: { display: 'flex', gap: '10px' },
-  input: { flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '16px' },
-  button: { padding: '14px', backgroundColor: '#005596', color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' },
+  row: { display: 'flex', gap: '10px' }, // Pour mettre Nom/Prénom côte à côte
+  input: { padding: '12px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', flex: 1 },
+  select: { padding: '12px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', flex: 1, backgroundColor: 'white' },
+  button: { padding: '14px', backgroundColor: '#005596', color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: '600', cursor: 'pointer', marginTop: '10px' },
   error: { backgroundColor: '#fee2e2', color: '#991b1b', padding: '10px', borderRadius: '6px', marginBottom: '15px' },
   footer: { marginTop: '1.5rem', fontSize: '14px', color: '#666' },
   link: { color: '#005596', fontWeight: 'bold', textDecoration: 'none' }

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-// Ajoutez 'Link' dans les accolades
-import { useNavigate, Link } from 'react-router-dom';// [NORME] Import du Service
-import { loginUser } from "../services/authService";
+import { useNavigate, Link } from 'react-router-dom';
+// [IMPORTANT] Ajoute getUserProfile dans l'import ci-dessous
+import { loginUser, getUserProfile } from "../services/authService"; 
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -14,114 +14,79 @@ export default function Login() {
     setError("");
     
     try {
-      // [NORME] Appel Service
-      await loginUser(email, password);
+      // 1. Connexion Auth (Firebase Auth)
+      const userAuth = await loginUser(email, password);
       
-      // Ici, on pourrait ajouter une logique pour vérifier le rôle
-      // et rediriger vers /admin ou /student
-      alert("Connexion réussie !");
-      navigate('/app/student'); 
-      
+      // 2. Récupération du rôle dans Firestore
+      // On utilise l'UID récupéré à l'étape 1
+      const userProfile = await getUserProfile(userAuth.uid);
+
+      alert(`Bienvenue ${userProfile.prenom} !`);
+
+      // 3. Redirection conditionnelle selon le rôle
+      if (userProfile.role === 'admin') {
+          navigate('/app/admin'); // Crée cette route si elle n'existe pas
+      } else if (userProfile.role === 'artisan') {
+          navigate('/app/artisan');
+      } else {
+          // Par défaut (student)
+          navigate('/app/student'); 
+      }
+
     } catch (err) {
       console.error(err);
-      setError("Erreur de connexion : Vérifiez vos identifiants.");
+      // Message d'erreur un peu plus précis si le profil n'existe pas
+      setError("Erreur : Identifiants incorrects ou compte introuvable.");
     }
   };
 
+  // ... le reste de ton JSX (return) reste identique ...
   return (
-    // CONTENEUR PRINCIPAL (Le fond gris)
-    // 100vh = 100% de la hauteur de l'écran
-    // display: flex + center = Centre le contenu verticalement et horizontalement
-    <div style={{ 
-      minHeight: '100vh', 
-      width: '100%',
-      display: 'flex', 
-      alignItems: 'center', 
-      justifyContent: 'center', 
-      backgroundColor: '#f0f2f5',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
-    }}>
-
-      {/* LA CARTE (Le rectangle blanc) */}
-      <div style={{ 
-        width: '90%',        // Mobile : Prend presque toute la largeur
-        maxWidth: '400px',   // Web : S'arrête à 400px max (ne s'étire pas)
-        backgroundColor: 'white', 
-        padding: '2rem', 
-        borderRadius: '12px', // Coins arrondis style App
-        boxShadow: '0 4px 12px rgba(0,0,0,0.1)', // Ombre douce
-        textAlign: 'center'
-      }}>
-        
-        {/* LOGO / TITRE */}
-        <h1 style={{ color: '#005596', margin: '0 0 1.5rem 0', fontSize: '24px' }}>
-          FixLiya
-        </h1>
-        
-        {error && <div style={{ 
-          backgroundColor: '#fee2e2', 
-          color: '#991b1b', 
-          padding: '10px', 
-          borderRadius: '6px', 
-          marginBottom: '15px',
-          fontSize: '14px'
-        }}>
-          {error}
-        </div>}
-
-        <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          
-          <input 
+    <div style={styles.container}>
+       {/* ... ton code JSX ... */}
+       <div style={styles.card}>
+        <h1 style={styles.title}>FixLiya</h1>
+        {error && <div style={styles.error}>{error}</div>}
+        <form onSubmit={handleLogin} style={styles.form}>
+           {/* ... tes inputs ... */}
+           <input 
             type="email" 
-            placeholder="Email étudiant" 
+            placeholder="Email" // J'ai enlevé "étudiant" car ça peut être un admin
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            style={{ 
-              padding: '12px', 
-              borderRadius: '8px', 
-              border: '1px solid #ddd',
-              fontSize: '16px' // Taille confortable pour le tactile
-            }} 
+            style={styles.input} 
             required
           />
-          
           <input 
             type="password" 
             placeholder="Mot de passe" 
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            style={{ 
-              padding: '12px', 
-              borderRadius: '8px', 
-              border: '1px solid #ddd',
-              fontSize: '16px'
-            }} 
+            style={styles.input} 
             required
           />
-          
-          <button type="submit" style={{ 
-            padding: '14px', 
-            backgroundColor: '#005596', 
-            color: 'white', 
-            border: 'none', 
-            borderRadius: '8px', 
-            fontSize: '16px', 
-            fontWeight: '600',
-            cursor: 'pointer',
-            transition: 'background 0.2s'
-          }}>
-            Se connecter
-          </button>
-
+          <button type="submit" style={styles.button}>Se connecter</button>
         </form>
-
-        <p style={{ marginTop: '1.5rem', color: '#666', fontSize: '14px' }}>
-  Pas encore de compte ?{' '}
-  <Link to="/register" style={{ color: '#005596', fontWeight: 'bold', textDecoration: 'none' }}>
-    S'inscrire
-  </Link>
-</p>
-      </div>
+        <p style={styles.footer}>
+          Pas encore de compte ?{' '}
+          <Link to="/register" style={styles.link}>
+            S'inscrire
+          </Link>
+        </p>
+       </div>
     </div>
   );
 }
+
+// ... styles ...
+const styles = {
+  container: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0f2f5' },
+  card: { width: '90%', maxWidth: '400px', backgroundColor: 'white', padding: '2rem', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', textAlign: 'center' },
+  title: { color: '#005596', marginBottom: '1.5rem', fontSize: '24px' },
+  form: { display: 'flex', flexDirection: 'column', gap: '1rem' },
+  input: { padding: '12px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '16px' },
+  button: { padding: '14px', backgroundColor: '#005596', color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: '600', cursor: 'pointer', transition: 'background 0.2s' },
+  error: { backgroundColor: '#fee2e2', color: '#991b1b', padding: '10px', borderRadius: '6px', marginBottom: '15px', fontSize: '14px' },
+  footer: { marginTop: '1.5rem', fontSize: '14px', color: '#666' },
+  link: { color: '#005596', fontWeight: 'bold', textDecoration: 'none' }
+};

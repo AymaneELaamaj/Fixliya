@@ -1,115 +1,157 @@
-import React, { useState, useEffect } from 'react';
-import { getAllTickets, assignTicket, getArtisans } from "../services/adminService";
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { getAllTickets, getArtisans, assignTicket } from '../services/adminService';
+import { logoutUser } from '../services/authService';
+import { useNavigate, Link } from 'react-router-dom';
 
 export default function AdminDashboard() {
-  const [tickets, setTickets] = useState([]);
-  const [artisans, setArtisans] = useState([]); // Liste des artisans
-  const [loading, setLoading] = useState(true);
-  
-  // Gestion de l'assignation (quel ticket est en cours d'assignation ?)
-  const [selectedTicketId, setSelectedTicketId] = useState(null); 
   const navigate = useNavigate();
+  const [tickets, setTickets] = useState([]);
+  const [artisans, setArtisans] = useState([]);
+  const [loading, setLoading] = useState(true);
 
+  // Chargement des données au démarrage
   useEffect(() => {
-    loadData();
+    const fetchData = async () => {
+      try {
+        const ticketsData = await getAllTickets();
+        const artisansData = await getArtisans();
+        
+        // On trie : les Urgents en premier [cite: 36]
+        const sortedTickets = ticketsData.sort((a, b) => Number(b.isUrgent) - Number(a.isUrgent));
+        
+        setTickets(sortedTickets);
+        setArtisans(artisansData);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, []);
 
-  const loadData = async () => {
-    const ticketsData = await getAllTickets();
-    const artisansData = await getArtisans(); // On charge aussi les artisans
-    setTickets(ticketsData);
-    setArtisans(artisansData);
-    setLoading(false);
-  };
-
-  // Quand l'admin choisit un nom dans la liste
-  const handleAssignChange = async (ticketId, e) => {
-    const artisanId = e.target.value;
+  // Gestion du Dispatching (Assignation) [cite: 37]
+  const handleAssign = async (ticketId, artisanId) => {
     if (!artisanId) return;
-
-    // On retrouve le nom complet grâce à l'ID
-    const selectedArtisan = artisans.find(a => a.id === artisanId); // Chercher dans notre liste mémoire
-    const nomComplet = `${selectedArtisan.prenom} ${selectedArtisan.nom}`;
-
-    if (window.confirm(`Assigner ce ticket à ${nomComplet} ?`)) {
-      await assignTicket(ticketId, artisanId, nomComplet);
-      loadData(); // Rafraîchir
-      setSelectedTicketId(null); // Fermer le menu
+    
+    // Trouver le nom de l'artisan sélectionné
+    const selectedArtisan = artisans.find(a => a.id === artisanId);
+    
+    if (window.confirm(`Assigner ce ticket à ${selectedArtisan.prenom} ?`)) {
+      try {
+        await assignTicket(ticketId, artisanId, selectedArtisan.prenom);
+        alert("Ticket assigné avec succès !");
+        // Mise à jour locale de la liste pour voir le changement direct
+        setTickets(tickets.map(t => 
+          t.id === ticketId 
+            ? { ...t, status: 'in_progress', assignedToName: selectedArtisan.prenom } 
+            : t
+        ));
+      } catch (err) {
+        alert("Erreur lors de l'assignation");
+      }
     }
   };
 
+  const handleLogout = async () => {
+    await logoutUser();
+    navigate('/login');
+  };
+
+  if (loading) return <div>Chargement du tableau de bord...</div>;
+
   return (
     <div style={styles.container}>
-      <h1 style={{color: '#005596'}}>Pilotage Syndic</h1>
-      
-      <div style={styles.tableContainer}>
-        <table style={styles.table}>
-          <thead>
-            <tr style={{background: '#f1f5f9'}}>
-              <th style={styles.th}>Titre</th>
-              <th style={styles.th}>Catégorie</th>
-              <th style={styles.th}>Statut</th>
-              <th style={styles.th}>Assignation</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tickets.map(ticket => (
-              <tr key={ticket.id} style={{borderBottom: '1px solid #eee'}}>
-                <td style={styles.td}>{ticket.titre}</td>
-                <td style={styles.td}>{ticket.category}</td>
-                <td style={styles.td}>{ticket.status}</td>
-                
-                <td style={styles.td}>
-                  {/* LOGIQUE D'AFFICHAGE INTELLIGENTE */}
-                  {ticket.status === 'en_attente' ? (
-                    
-                    // Si on a cliqué sur "Assigner", on montre la liste
-                    selectedTicketId === ticket.id ? (
-                      <select 
-                        onChange={(e) => handleAssignChange(ticket.id, e)}
-                        style={styles.select}
-                        defaultValue=""
-                      >
-                        <option value="" disabled>Choisir un artisan...</option>
-                        {artisans.map(a => (
-                          <option key={a.id} value={a.id}>
-                            {a.prenom} {a.nom}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      // Sinon on montre le bouton
-                      <button 
-                        onClick={() => setSelectedTicketId(ticket.id)}
-                        style={styles.btn}
-                      >
-                        Assigner
-                      </button>
-                    )
+      <header style={styles.header}>
+        <h1>Admin Dashboard 🛠️</h1>
+        <div style={styles.headerRight}>
+             {/* Lien vers la page de création d'artisan (Section 3.2) */}
+            <Link to="/admin/create-artisan" style={styles.linkBtn}>+ Ajouter Artisan</Link>
+            <button onClick={handleLogout} style={styles.logoutBtn}>Déconnexion</button>
+        </div>
+      </header>
 
-                  ) : (
-                    // Si déjà assigné
-                    <span style={{color: '#005596', fontWeight: 'bold'}}>
-                      👤 {ticket.assignedTo}
-                    </span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <table style={styles.table}>
+        <thead>
+          <tr style={styles.thRow}>
+            <th>Urgence</th>
+            <th>Lieu</th>
+            <th>Catégorie</th>
+            <th>Description</th>
+            <th>Statut</th>
+            <th>Assignation (Dispatch)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {tickets.map(ticket => (
+            <tr key={ticket.id} style={styles.tr}>
+              {/* Colonne Urgence [cite: 24] */}
+              <td>
+                {ticket.isUrgent ? (
+                  <span style={styles.urgentBadge}>URGENT</span>
+                ) : (
+                  <span style={styles.normalBadge}>Normal</span>
+                )}
+              </td>
+              <td>{ticket.location}</td>
+              <td>{ticket.category}</td>
+              <td style={{maxWidth: '200px'}}>{ticket.description}</td>
+              
+              {/* Colonne Statut [cite: 28] */}
+              <td>
+                <span style={getStatusStyle(ticket.status)}>
+                  {ticket.status === 'pending' ? 'En attente' : 
+                   ticket.status === 'in_progress' ? 'En cours' : 'Terminé'}
+                </span>
+              </td>
+
+              {/* Colonne Dispatching [cite: 37] */}
+              <td>
+                {ticket.status === 'completed' ? (
+                  <span>Clôturé</span>
+                ) : ticket.assignedToName ? (
+                  <strong>Chez : {ticket.assignedToName}</strong>
+                ) : (
+                  <select 
+                    onChange={(e) => handleAssign(ticket.id, e.target.value)}
+                    style={styles.select}
+                    defaultValue=""
+                  >
+                    <option value="" disabled>Choisir un artisan...</option>
+                    {artisans.map(artisan => (
+                      <option key={artisan.id} value={artisan.id}>
+                        {artisan.prenom} {artisan.nom} ({artisan.specialite})
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
 
+// Styles utilitaires
+const getStatusStyle = (status) => {
+    const base = { padding: '4px 8px', borderRadius: '4px', fontWeight: 'bold', fontSize: '12px' };
+    if (status === 'pending') return { ...base, backgroundColor: '#fef3c7', color: '#d97706' };
+    if (status === 'in_progress') return { ...base, backgroundColor: '#dbeafe', color: '#2563eb' };
+    return { ...base, backgroundColor: '#dcfce7', color: '#16a34a' };
+};
+
 const styles = {
-  container: { padding: '20px', backgroundColor: '#f8f9fa', minHeight: '100vh', fontFamily: 'sans-serif' },
-  tableContainer: { background: 'white', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', overflow: 'hidden' },
-  table: { width: '100%', borderCollapse: 'collapse' },
-  th: { padding: '15px', textAlign: 'left', color: '#64748b' },
-  td: { padding: '15px', color: '#334155' },
-  btn: { background: '#005596', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer' },
-  select: { padding: '6px', borderRadius: '4px', borderColor: '#ccc' }
+  container: { padding: '20px', backgroundColor: '#f8fafc', minHeight: '100vh' },
+  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' },
+  headerRight: { display: 'flex', gap: '15px'},
+  table: { width: '100%', borderCollapse: 'collapse', backgroundColor: 'white', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' },
+  thRow: { backgroundColor: '#f1f5f9', textAlign: 'left' },
+  tr: { borderBottom: '1px solid #e2e8f0' },
+  select: { padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' },
+  urgentBadge: { backgroundColor: '#fee2e2', color: '#dc2626', padding: '4px 8px', borderRadius: '4px', fontWeight: 'bold', fontSize: '12px' },
+  normalBadge: { color: '#64748b', fontSize: '12px' },
+  linkBtn: { textDecoration: 'none', backgroundColor: '#005596', color: 'white', padding: '8px 12px', borderRadius: '6px', fontSize: '14px'},
+  logoutBtn: { backgroundColor: 'transparent', border: '1px solid #ef4444', color: '#ef4444', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer'}
 };

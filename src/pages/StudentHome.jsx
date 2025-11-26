@@ -1,74 +1,146 @@
-// src/pages/StudentHome.jsx
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from "../contexts/AuthContext"; 
-import { getStudentTickets } from "../services/ticketService"; // Notre Service
-import { logoutUser } from "../services/authService"; // Notre Service
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { auth, db } from '../firebase';
+import { getStudentTickets } from '../services/ticketService';
+import { logoutUser } from '../services/authService';
+import { doc, getDoc } from 'firebase/firestore';
 
 export default function StudentHome() {
-  const { currentUser } = useAuth(); 
-  const [tickets, setTickets] = useState([]);
-  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const [tickets, setTickets] = useState([]);
+  const [userName, setUserName] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  // Chargement des données
   useEffect(() => {
-    async function load() {
-      if (currentUser) {
-        const data = await getStudentTickets(currentUser.uid);
-        setTickets(data);
+    const fetchData = async () => {
+      // 1. Vérifier auth
+      const user = auth.currentUser;
+      if (!user) {
+        navigate('/login');
+        return;
+      }
+
+      try {
+        // 2. Récupérer le nom de l'étudiant pour l'accueil
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists()) {
+          setUserName(userDoc.data().prenom);
+        }
+
+        // 3. Récupérer ses tickets
+        const myTickets = await getStudentTickets(user.uid);
+        setTickets(myTickets);
+      } catch (error) {
+        console.error("Erreur chargement dashboard:", error);
+      } finally {
         setLoading(false);
       }
-    }
-    load();
-  }, [currentUser]);
+    };
+    
+    fetchData();
+  }, [navigate]);
 
   const handleLogout = async () => {
     await logoutUser();
     navigate('/login');
   };
 
+  // Fonction utilitaire pour la couleur des statuts (Barre de progression visuelle - Sec 2.3)
+  const getStatusStyle = (status) => {
+    switch(status) {
+      case 'pending': return { bg: '#fef3c7', text: '#d97706', label: 'En attente' }; // Jaune
+      case 'in_progress': return { bg: '#dbeafe', text: '#2563eb', label: 'Pris en charge' }; // Bleu
+      case 'completed': return { bg: '#dcfce7', text: '#16a34a', label: 'Terminé' }; // Vert
+      default: return { bg: '#f3f4f6', text: '#374151', label: status };
+    }
+  };
+
+  if (loading) return <div style={styles.loading}>Chargement...</div>;
+
   return (
     <div style={styles.container}>
-      <div style={styles.header}>
-        <h1 style={styles.title}>Mes Signalements</h1>
-        <button onClick={handleLogout} style={styles.logoutBtn}>Déconnexion</button>
-      </div>
-
-      <div style={styles.content}>
-        {loading ? <p>Chargement...</p> : null}
-        
-        {!loading && tickets.length === 0 && (
-          <p style={{textAlign: 'center', color: '#888', marginTop: '50px'}}>Aucune panne signalée. 🎉</p>
-        )}
-
-        <div style={styles.list}>
-          {tickets.map(t => (
-            <div key={t.id} style={styles.card}>
-              <div style={{display:'flex', justifyContent:'space-between'}}>
-                 <span style={styles.badge}>{t.category}</span>
-                 <span style={{fontSize:'12px', color:'#666'}}>{t.status}</span>
-              </div>
-              <h3 style={{margin: '5px 0'}}>{t.titre}</h3>
-            </div>
-          ))}
+      {/* En-tête */}
+      <header style={styles.header}>
+        <div>
+          <h1 style={styles.welcome}>Bonjour, {userName} 👋</h1>
+          <p style={styles.subtitle}>Suivez vos demandes d'intervention</p>
         </div>
+        <button onClick={handleLogout} style={styles.logoutBtn}>Déconnexion</button>
+      </header>
+
+      {/* Bouton d'action principal */}
+      <div style={styles.actionArea}>
+        <Link to="/create-ticket" style={styles.createBtn}>
+          + Signaler un problème
+        </Link>
       </div>
 
-      {/* Le Bouton Flottant (+) qui emmène vers la création */}
-      <button onClick={() => navigate('/create-ticket')} style={styles.fab}>+</button>
+      {/* Liste des tickets (Sec 2.3) */}
+      <div style={styles.ticketList}>
+        <h2 style={styles.sectionTitle}>Mes Tickets Récents</h2>
+        
+        {tickets.length === 0 ? (
+          <div style={styles.emptyState}>Aucun ticket pour le moment.</div>
+        ) : (
+          tickets.map(ticket => {
+            const statusStyle = getStatusStyle(ticket.status);
+            return (
+              <div key={ticket.id} style={styles.ticketCard}>
+                <div style={styles.cardHeader}>
+                  <span style={styles.categoryBadge}>{ticket.category}</span>
+                  {ticket.isUrgent && <span style={styles.urgentBadge}>URGENT</span>}
+                </div>
+                
+                <p style={styles.description}>{ticket.description}</p>
+                <p style={styles.location}>📍 {ticket.location}</p>
+
+                <div style={styles.cardFooter}>
+                  <span style={styles.date}>
+                    {new Date(ticket.createdAt).toLocaleDateString()}
+                  </span>
+                  
+                  {/* Barre de statut visuelle */}
+                  <span style={{
+                    backgroundColor: statusStyle.bg,
+                    color: statusStyle.text,
+                    padding: '4px 10px',
+                    borderRadius: '12px',
+                    fontSize: '12px',
+                    fontWeight: 'bold'
+                  }}>
+                    {statusStyle.label}
+                  </span>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
     </div>
   );
 }
 
 const styles = {
-  container: { minHeight: '100vh', backgroundColor: '#f4f6f8', fontFamily: 'sans-serif' },
-  header: { padding: '20px', background: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' },
-  title: { margin: 0, fontSize: '18px', color: '#005596' },
-  logoutBtn: { background: '#ffebee', color: '#c62828', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' },
-  content: { padding: '20px' },
-  list: { display: 'flex', flexDirection: 'column', gap: '10px' },
-  card: { background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' },
-  badge: { background: '#e1f5fe', color: '#0277bd', padding: '2px 8px', borderRadius: '10px', fontSize: '12px', fontWeight: 'bold' },
-  fab: { position: 'fixed', bottom: '20px', right: '20px', width: '56px', height: '56px', borderRadius: '50%', background: '#005596', color: 'white', fontSize: '30px', border: 'none', boxShadow: '0 4px 10px rgba(0,0,0,0.3)', cursor: 'pointer' }
+  container: { padding: '20px', backgroundColor: '#f0f2f5', minHeight: '100vh', maxWidth: '600px', margin: '0 auto' },
+  loading: { display: 'flex', justifyContent: 'center', marginTop: '50px', color: '#666' },
+  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' },
+  welcome: { fontSize: '22px', color: '#1f2937', margin: 0 },
+  subtitle: { fontSize: '14px', color: '#6b7280', marginTop: '5px' },
+  logoutBtn: { border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontSize: '14px', fontWeight: '500' },
+  
+  actionArea: { marginBottom: '25px' },
+  createBtn: { display: 'block', width: '100%', padding: '15px', backgroundColor: '#005596', color: 'white', textAlign: 'center', borderRadius: '10px', textDecoration: 'none', fontWeight: 'bold', fontSize: '16px', boxShadow: '0 4px 6px rgba(0, 85, 150, 0.2)' },
+  
+  sectionTitle: { fontSize: '18px', color: '#374151', marginBottom: '15px' },
+  ticketList: { display: 'flex', flexDirection: 'column', gap: '15px' },
+  emptyState: { textAlign: 'center', color: '#9ca3af', marginTop: '20px' },
+  
+  ticketCard: { backgroundColor: 'white', padding: '16px', borderRadius: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', border: '1px solid #e5e7eb' },
+  cardHeader: { display: 'flex', justifyContent: 'space-between', marginBottom: '10px' },
+  categoryBadge: { fontSize: '12px', fontWeight: 'bold', color: '#4b5563', backgroundColor: '#f3f4f6', padding: '4px 8px', borderRadius: '6px' },
+  urgentBadge: { fontSize: '10px', fontWeight: 'bold', color: 'white', backgroundColor: '#ef4444', padding: '4px 8px', borderRadius: '6px' },
+  description: { fontSize: '14px', color: '#1f2937', margin: '0 0 10px 0', lineHeight: '1.4' },
+  location: { fontSize: '12px', color: '#6b7280', marginBottom: '12px' },
+  cardFooter: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f3f4f6', paddingTop: '10px' },
+  date: { fontSize: '12px', color: '#9ca3af' }
 };

@@ -1,79 +1,61 @@
+// src/services/adminService.js
 import { db } from "../firebase";
 import { collection, query, getDocs, doc, updateDoc, where, setDoc } from "firebase/firestore";
-
-// Imports nécessaires pour l'App Fantôme (Secondary App)
 import { initializeApp, getApp, deleteApp } from "firebase/app";
 import { getAuth, createUserWithEmailAndPassword, signOut } from "firebase/auth";
 
-// On récupère la configuration de l'app principale pour créer le clone
-// Assurez-vous que Firebase est bien initialisé dans ../firebase.js avant d'appeler ceci
+// Récupération dynamique de la config pour le "Ghost App"
 let firebaseConfig;
 try {
   firebaseConfig = getApp().options;
 } catch (e) {
-  console.error("Erreur: Impossible de récupérer la config Firebase. Vérifiez src/firebase.js");
+  console.error("Erreur config Firebase", e);
 }
 
 /**
- * 1. Récupérer TOUS les tickets
+ * 1. Récupérer TOUS les tickets (Tableau de Bord - Sec 3.1)
+ * [cite: 36]
  */
 export const getAllTickets = async () => {
-  try {
-    const q = query(collection(db, "tickets"));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  } catch (error) {
-    console.error("Erreur Admin:", error);
-    throw error;
-  }
+  const q = query(collection(db, "tickets")); // Tri à ajouter plus tard si besoin
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
 
 /**
- * 2. Assigner un ticket
+ * 2. Assigner un ticket à un artisan (Dispatching - Sec 3.1)
+ * [cite: 37]
  */
 export const assignTicket = async (ticketId, artisanId, artisanName) => {
-  try {
-    const ticketRef = doc(db, "tickets", ticketId);
-    await updateDoc(ticketRef, {
-      assignedToId: artisanId,
-      assignedTo: artisanName,
-      status: "pris_en_charge"
-    });
-  } catch (error) {
-    console.error("Erreur Assignation:", error);
-    throw error;
-  }
+  const ticketRef = doc(db, "tickets", ticketId);
+  await updateDoc(ticketRef, {
+    assignedToId: artisanId,   // ID pour la requête côté artisan
+    assignedToName: artisanName, // Nom pour l'affichage admin
+    status: "in_progress"      // Passe de 'pending' à 'in_progress' [cite: 28]
+  });
 };
 
 /**
- * 3. Récupérer la liste des artisans
+ * 3. Récupérer la liste des artisans pour le menu déroulant
  */
 export const getArtisans = async () => {
-  try {
-    const q = query(collection(db, "users"), where("role", "==", "artisan"));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  } catch (error) {
-    return [];
-  }
+  const q = query(collection(db, "users"), where("role", "==", "artisan"));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
 
 /**
- * 4. CRÉER UN ARTISAN (App Fantôme)
- * Cette fonction crée un compte SANS déconnecter l'admin actuel.
+ * 4. Créer un Artisan sans déconnecter l'Admin (Gestion - Sec 3.2)
+ * [cite: 43]
  */
 export const createArtisanAccount = async (artisanData) => {
   let secondaryApp;
-  let secondaryAuth;
-
   try {
-    console.log("👻 Démarrage de l'App Fantôme...");
-    
-    // A. On crée une 2ème instance de l'app Firebase
-    secondaryApp = initializeApp(firebaseConfig, "SecondaryApp");
-    secondaryAuth = getAuth(secondaryApp);
+    const appName = "SecondaryApp" + Date.now(); // Nom unique
+    secondaryApp = initializeApp(firebaseConfig, appName);
+    const secondaryAuth = getAuth(secondaryApp);
 
-    // B. On crée l'utilisateur sur l'app fantôme
+    // Création sur l'instance secondaire
     const userCredential = await createUserWithEmailAndPassword(
       secondaryAuth, 
       artisanData.email, 
@@ -81,29 +63,20 @@ export const createArtisanAccount = async (artisanData) => {
     );
     const newUser = userCredential.user;
 
-    console.log("✅ Compte Auth créé pour :", newUser.email);
-
-    // C. On écrit son profil dans Firestore (via l'app principale 'db')
+    // Écriture dans la base principale (db)
     await setDoc(doc(db, "users", newUser.uid), {
       prenom: artisanData.prenom,
       nom: artisanData.nom,
       email: artisanData.email,
-      specialite: artisanData.specialite,
-      role: "artisan", 
+      specialite: artisanData.specialite, // Ex: Plomberie
+      role: "artisan",
       createdAt: new Date().toISOString()
     });
 
-    // D. On déconnecte proprement le fantôme
-    await signOut(secondaryAuth);
-
+    await signOut(secondaryAuth); // Déconnexion du fantôme
   } catch (error) {
-    console.error("Erreur création artisan:", error);
     throw error;
   } finally {
-    // E. On détruit l'app fantôme pour libérer la mémoire
-    if (secondaryApp) {
-      await deleteApp(secondaryApp);
-      console.log("👻 App Fantôme détruite.");
-    }
+    if (secondaryApp) await deleteApp(secondaryApp); // Nettoyage
   }
 };

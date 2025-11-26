@@ -10,7 +10,7 @@ export const getMyMissions = async (artisanId) => { // On attend un ID maintenan
     const q = query(
       collection(db, "tickets"), 
       where("assignedToId", "==", artisanId), // <--- On filtre sur le nouveau champ ID
-      where("status", "==", "pris_en_charge")
+      where("status", "==", "in_progress")
     );
 
     const snapshot = await getDocs(q);
