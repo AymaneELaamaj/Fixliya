@@ -15,14 +15,12 @@ export const registerUser = async (userData) => {
   // 2. Création Profil Firestore avec les champs du PDF
   const userProfile = {
     uid: user.uid,
-    prenom: userData.prenom, // 
-    nom: userData.nom,       // 
-    email: userData.email,   // 
-    telephone: userData.telephone, //  - Champ ajouté
-    pavillon: userData.pavillon,   // 
-    chambre: userData.chambre,     // 
+    prenom: userData.prenom,
+    nom: userData.nom,
+    email: userData.email,
+    telephone: userData.telephone,
     role: "student", 
-    accountStatus: "pending", // Pour la validation Admin future 
+    accountStatus: "pending",
     createdAt: new Date().toISOString()
   };
 
