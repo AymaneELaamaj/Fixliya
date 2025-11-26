@@ -21,6 +21,7 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadData = async () => {
@@ -58,9 +59,10 @@ export default function StudentDashboard() {
     try {
       await validateTicket(selectedTicket.id, rating, comment);
       alert("Merci pour votre retour ! Ticket clôturé.");
-      setSelectedTicket(null); // Fermer la popup
-      loadData(); // Recharger la liste pour voir le changement de statut
-    } catch (err) {
+      setSelectedTicket(null);
+      loadData();
+    } catch (error) {
+      console.error(error);
       alert("Erreur lors de la validation.");
     }
   };
@@ -234,8 +236,30 @@ export default function StudentDashboard() {
       {selectedTicket && (
         <div style={styles.modalOverlay}>
           <div style={styles.modalCard}>
-            <h3>Validation de l'intervention</h3>
-            <p>Le problème "{selectedTicket.category}" est-il résolu ?</p>
+            <h3 style={styles.modalTitle}>Validation de l'intervention</h3>
+            
+            {/* Afficher les photos avant/après si disponibles */}
+            {(selectedTicket.beforePhoto || selectedTicket.afterPhoto) && (
+              <div style={styles.photosSection}>
+                <h4 style={styles.photosTitle}>📸 Preuve du travail</h4>
+                <div style={styles.photosContainer}>
+                  {selectedTicket.beforePhoto && (
+                    <div style={styles.photoItem}>
+                      <p style={styles.photoLabel}>Avant</p>
+                      <img src={selectedTicket.beforePhoto} style={styles.photoImage} alt="Avant" />
+                    </div>
+                  )}
+                  {selectedTicket.afterPhoto && (
+                    <div style={styles.photoItem}>
+                      <p style={styles.photoLabel}>Après</p>
+                      <img src={selectedTicket.afterPhoto} style={styles.photoImage} alt="Après" />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            <p style={styles.validationText}>Le problème "{selectedTicket.category}" est-il résolu ?</p>
             
             <label style={styles.label}>Votre Note (1 à 5) :</label>
             <div style={styles.starContainer}>
@@ -313,7 +337,18 @@ const styles = {
   
   // Styles de la Modale (Popup)
   modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
-  modalCard: { backgroundColor: 'white', padding: '25px', borderRadius: '12px', width: '90%', maxWidth: '350px', textAlign: 'center', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' },
+  modalCard: { backgroundColor: 'white', padding: '25px', borderRadius: '12px', width: '90%', maxWidth: '450px', maxHeight: '90vh', overflowY: 'auto', textAlign: 'center', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' },
+  modalTitle: { fontSize: '18px', fontWeight: 'bold', color: '#1f2937', margin: '0 0 15px 0' },
+  
+  // Styles pour les photos
+  photosSection: { marginBottom: '20px', backgroundColor: '#f9fafb', padding: '15px', borderRadius: '8px' },
+  photosTitle: { fontSize: '13px', fontWeight: 'bold', color: '#374151', margin: '0 0 12px 0' },
+  photosContainer: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' },
+  photoItem: { display: 'flex', flexDirection: 'column', gap: '8px' },
+  photoLabel: { fontSize: '12px', fontWeight: 'bold', color: '#6b7280', margin: 0 },
+  photoImage: { width: '100%', height: '150px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #e5e7eb' },
+  
+  validationText: { fontSize: '14px', color: '#1f2937', marginBottom: '15px', margin: '0 0 15px 0' },
   label: { display: 'block', fontWeight: 'bold', marginBottom: '10px', marginTop: '15px', color: '#1f2937' },
   starContainer: { marginBottom: '15px', display: 'flex', justifyContent: 'center', gap: '5px' },
   textarea: { width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #ddd', minHeight: '80px', marginBottom: '20px', fontFamily: 'inherit', fontSize: '13px', boxSizing: 'border-box' },

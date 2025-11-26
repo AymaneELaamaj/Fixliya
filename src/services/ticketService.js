@@ -12,7 +12,6 @@ export const getStudentTickets = async (studentId) => {
 
     const snapshot = await getDocs(q);
     
-    // Transformation des données (Mapping)
     return snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
@@ -22,14 +21,43 @@ export const getStudentTickets = async (studentId) => {
     throw error;
   }
 };
+
+/**
+ * Récupérer les tickets terminés par l'artisan et en attente de validation
+ */
+export const getTicketsAwaitingValidation = async (studentId) => {
+  try {
+    const q = query(
+      collection(db, "tickets"), 
+      where("studentId", "==", studentId),
+      where("status", "==", "termine_artisan")
+    );
+
+    const snapshot = await getDocs(q);
+    
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+  } catch (error) {
+    console.error("Erreur récupération tickets terminés:", error);
+    return [];
+  }
+};
+
+/**
+ * Valider et noter un ticket terminé
+ * Photos avant/après incluses
+ */
 export const validateTicket = async (ticketId, rating, comment) => {
   try {
     const ticketRef = doc(db, "tickets", ticketId);
     
     await updateDoc(ticketRef, {
-      status: "completed",       // Statut final du cycle
-      rating: rating,            // Note de 1 à 5 [cite: 31]
-      studentComment: comment,   // Feedback optionnel
+      status: "completed",
+      rating: rating,
+      studentComment: comment,
       validatedAt: new Date().toISOString()
     });
   } catch (error) {
@@ -38,38 +66,46 @@ export const validateTicket = async (ticketId, rating, comment) => {
   }
 };
 
-
 /**
- * 2. Créer un ticket avec Image (Écriture Complexe)
+ * Rejeter une intervention (demander des corrections)
  */
-
-
-// Note : J'ai retiré les imports de Storage
+export const rejectTicket = async (ticketId, reason) => {
+  try {
+    const ticketRef = doc(db, "tickets", ticketId);
+    
+    await updateDoc(ticketRef, {
+      status: "in_progress",
+      rejectionReason: reason,
+      rejectedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error("Erreur rejet:", error);
+    throw error;
+  }
+};
 
 /**
- * Crée un ticket (Version temporaire SANS image)
+ * Créer un ticket avec support des photos
  */
 export const createTicket = async (ticketData) => {
   try {
-    // On saute l'étape d'upload pour l'instant
-
-    // 2. Préparation de l'objet Ticket
     const newTicket = {
       studentId: ticketData.studentId, 
       studentName: ticketData.studentName,
       location: ticketData.location, 
-      category: ticketData.category, // Plomberie, Elec, etc. [cite: 22]
+      category: ticketData.category,
       description: ticketData.description,
-      
-      // PLACEHOLDER : On met une fausse image pour l'instant
-      imageUrl: "https://placehold.co/600x400?text=Image+Non+Disponible", 
-      
-      isUrgent: ticketData.isUrgent, // [cite: 24]
-      status: "pending", // "En attente" [cite: 28]
+      locationType: ticketData.locationType,
+      building: ticketData.building,
+      roomNumber: ticketData.roomNumber,
+      commonAreaName: ticketData.commonAreaName,
+      imageUrl: ticketData.imageUrl || "https://placehold.co/600x400?text=Image+Non+Disponible",
+      audioUrl: ticketData.audioUrl || null,
+      isUrgent: ticketData.isUrgent,
+      status: "pending",
       createdAt: new Date().toISOString()
     };
 
-    // 3. Sauvegarde dans Firestore
     await addDoc(collection(db, "tickets"), newTicket);
     return true;
 
@@ -78,6 +114,3 @@ export const createTicket = async (ticketData) => {
     throw error;
   }
 };
-
-
-// On ajoutera createTicket ici plus tard
