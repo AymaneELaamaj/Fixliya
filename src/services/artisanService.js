@@ -1,6 +1,29 @@
 import { db } from "../firebase";
+
 import { collection, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
 
+// ... (Garde ta fonction getMyMissions existante)
+
+/**
+ * NOUVEAU : Récupérer l'historique (Tickets validés avec notes)
+ */
+export const getArtisanHistory = async (artisanId) => {
+  try {
+    const q = query(
+      collection(db, "tickets"), 
+      where("assignedToId", "==", artisanId),
+      where("status", "==", "completed") // On veut seulement ceux validés par l'étudiant
+    );
+
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error("Erreur Historique:", error);
+    return [];
+  }
+};
+
+// ... (Garde ta fonction completeMission existante)
 /**
  * 1. Récupérer "MA JOURNÉE"
  * On cherche les tickets où le champ 'assignedTo' est égal à mon Nom.

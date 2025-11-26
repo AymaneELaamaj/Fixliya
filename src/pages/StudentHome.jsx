@@ -1,57 +1,77 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebase';
-import { getStudentTickets } from '../services/ticketService';
+import { getStudentTickets, validateTicket } from '../services/ticketService'; // Import validateTicket
 import { logoutUser } from '../services/authService';
 import { doc, getDoc } from 'firebase/firestore';
 
-export default function StudentHome() {
+export default function StudentDashboard() {
   const navigate = useNavigate();
   const [tickets, setTickets] = useState([]);
   const [userName, setUserName] = useState("");
   const [loading, setLoading] = useState(true);
 
+  // États pour la Notation (Rating)
+  const [selectedTicket, setSelectedTicket] = useState(null); // Quel ticket on note ?
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+
   useEffect(() => {
-    const fetchData = async () => {
-      // 1. Vérifier auth
-      const user = auth.currentUser;
-      if (!user) {
-        navigate('/login');
-        return;
-      }
+    loadData();
+  }, []);
 
-      try {
-        // 2. Récupérer le nom de l'étudiant pour l'accueil
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        if (userDoc.exists()) {
-          setUserName(userDoc.data().prenom);
-        }
+  const loadData = async () => {
+    const user = auth.currentUser;
+    if (!user) return navigate('/login');
 
-        // 3. Récupérer ses tickets
-        const myTickets = await getStudentTickets(user.uid);
-        setTickets(myTickets);
-      } catch (error) {
-        console.error("Erreur chargement dashboard:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchData();
-  }, [navigate]);
+    try {
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      if (userDoc.exists()) setUserName(userDoc.data().prenom);
+
+      const myTickets = await getStudentTickets(user.uid);
+      setTickets(myTickets);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogout = async () => {
     await logoutUser();
     navigate('/login');
   };
 
-  // Fonction utilitaire pour la couleur des statuts (Barre de progression visuelle - Sec 2.3)
-  const getStatusStyle = (status) => {
+  // Ouvrir la popup de notation
+  const openValidation = (ticket) => {
+    setSelectedTicket(ticket);
+    setRating(5);
+    setComment("");
+  };
+
+  // Envoyer la validation
+  const submitValidation = async () => {
+    if (!selectedTicket) return;
+    try {
+      await validateTicket(selectedTicket.id, rating, comment);
+      alert("Merci pour votre retour ! Ticket clôturé.");
+      setSelectedTicket(null); // Fermer la popup
+      loadData(); // Recharger la liste pour voir le changement de statut
+    } catch (err) {
+      alert("Erreur lors de la validation.");
+    }
+  };
+
+  const getStatusInfo = (status) => {
     switch(status) {
-      case 'pending': return { bg: '#fef3c7', text: '#d97706', label: 'En attente' }; // Jaune
-      case 'in_progress': return { bg: '#dbeafe', text: '#2563eb', label: 'Pris en charge' }; // Bleu
-      case 'completed': return { bg: '#dcfce7', text: '#16a34a', label: 'Terminé' }; // Vert
-      default: return { bg: '#f3f4f6', text: '#374151', label: status };
+      case 'pending': return { label: 'En attente', color: '#d97706', bg: '#fef3c7' };
+      case 'in_progress': return { label: 'En cours', color: '#2563eb', bg: '#dbeafe' };
+      
+      // Nouveau statut intermédiaire (Artisan a fini, attend validation étudiant)
+      case 'termine_artisan': return { label: 'À Valider', color: '#7e22ce', bg: '#f3e8ff' }; 
+      
+      case 'completed': return { label: 'Terminé', color: '#16a34a', bg: '#dcfce7' };
+      default: return { label: status, color: '#374151', bg: '#f3f4f6' };
     }
   };
 
@@ -59,88 +79,137 @@ export default function StudentHome() {
 
   return (
     <div style={styles.container}>
-      {/* En-tête */}
       <header style={styles.header}>
         <div>
           <h1 style={styles.welcome}>Bonjour, {userName} 👋</h1>
-          <p style={styles.subtitle}>Suivez vos demandes d'intervention</p>
+          <p style={styles.subtitle}>Espace Résident</p>
         </div>
         <button onClick={handleLogout} style={styles.logoutBtn}>Déconnexion</button>
       </header>
 
-      {/* Bouton d'action principal */}
       <div style={styles.actionArea}>
-        <Link to="/create-ticket" style={styles.createBtn}>
-          + Signaler un problème
-        </Link>
+        <Link to="/create-ticket" style={styles.createBtn}>+ Signaler un problème</Link>
       </div>
 
-      {/* Liste des tickets (Sec 2.3) */}
       <div style={styles.ticketList}>
-        <h2 style={styles.sectionTitle}>Mes Tickets Récents</h2>
+        <h2 style={styles.sectionTitle}>Mes Tickets</h2>
         
         {tickets.length === 0 ? (
-          <div style={styles.emptyState}>Aucun ticket pour le moment.</div>
+          <div style={styles.emptyState}>Aucun ticket. Tout va bien !</div>
         ) : (
           tickets.map(ticket => {
-            const statusStyle = getStatusStyle(ticket.status);
+            const statusInfo = getStatusInfo(ticket.status);
             return (
               <div key={ticket.id} style={styles.ticketCard}>
                 <div style={styles.cardHeader}>
                   <span style={styles.categoryBadge}>{ticket.category}</span>
-                  {ticket.isUrgent && <span style={styles.urgentBadge}>URGENT</span>}
-                </div>
-                
-                <p style={styles.description}>{ticket.description}</p>
-                <p style={styles.location}>📍 {ticket.location}</p>
-
-                <div style={styles.cardFooter}>
-                  <span style={styles.date}>
-                    {new Date(ticket.createdAt).toLocaleDateString()}
-                  </span>
-                  
-                  {/* Barre de statut visuelle */}
                   <span style={{
-                    backgroundColor: statusStyle.bg,
-                    color: statusStyle.text,
+                    backgroundColor: statusInfo.bg,
+                    color: statusInfo.color,
                     padding: '4px 10px',
                     borderRadius: '12px',
                     fontSize: '12px',
                     fontWeight: 'bold'
                   }}>
-                    {statusStyle.label}
+                    {statusInfo.label}
                   </span>
+                </div>
+                
+                <p style={styles.description}>{ticket.description}</p>
+                <div style={styles.cardFooter}>
+                  <span style={styles.date}>{new Date(ticket.createdAt).toLocaleDateString()}</span>
+                  
+                  {/* BOUTON DE VALIDATION (Visible seulement si l'artisan a fini) */}
+                  {ticket.status === 'termine_artisan' && (
+                    <button 
+                      onClick={() => openValidation(ticket)}
+                      style={styles.validateBtn}
+                    >
+                      ⭐ Valider & Noter
+                    </button>
+                  )}
+
+                  {/* AFFICHER LA NOTE SI TERMINÉ */}
+                  {ticket.status === 'completed' && ticket.rating && (
+                    <span style={styles.ratingDisplay}>Note : {ticket.rating}/5 ⭐</span>
+                  )}
                 </div>
               </div>
             );
           })
         )}
       </div>
+
+      {/* MODALE DE VALIDATION (Simple Overlay) */}
+      {selectedTicket && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalCard}>
+            <h3>Validation de l'intervention</h3>
+            <p>Le problème "{selectedTicket.category}" est-il résolu ?</p>
+            
+            <label style={styles.label}>Votre Note (1 à 5) :</label>
+            <div style={styles.starContainer}>
+              {[1, 2, 3, 4, 5].map(star => (
+                <span 
+                  key={star} 
+                  onClick={() => setRating(star)}
+                  style={{
+                    cursor: 'pointer', 
+                    fontSize: '24px', 
+                    color: star <= rating ? '#fbbf24' : '#e5e7eb'
+                  }}
+                >
+                  ★
+                </span>
+              ))}
+            </div>
+
+            <textarea 
+              placeholder="Un commentaire sur le service ?" 
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              style={styles.textarea}
+            />
+
+            <div style={styles.modalActions}>
+              <button onClick={() => setSelectedTicket(null)} style={styles.cancelBtn}>Annuler</button>
+              <button onClick={submitValidation} style={styles.confirmBtn}>Confirmer</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 const styles = {
+  // ... (Garde tes styles existants pour container, header, etc.)
   container: { padding: '20px', backgroundColor: '#f0f2f5', minHeight: '100vh', maxWidth: '600px', margin: '0 auto' },
-  loading: { display: 'flex', justifyContent: 'center', marginTop: '50px', color: '#666' },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' },
   welcome: { fontSize: '22px', color: '#1f2937', margin: 0 },
-  subtitle: { fontSize: '14px', color: '#6b7280', marginTop: '5px' },
-  logoutBtn: { border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontSize: '14px', fontWeight: '500' },
-  
-  actionArea: { marginBottom: '25px' },
-  createBtn: { display: 'block', width: '100%', padding: '15px', backgroundColor: '#005596', color: 'white', textAlign: 'center', borderRadius: '10px', textDecoration: 'none', fontWeight: 'bold', fontSize: '16px', boxShadow: '0 4px 6px rgba(0, 85, 150, 0.2)' },
-  
-  sectionTitle: { fontSize: '18px', color: '#374151', marginBottom: '15px' },
+  subtitle: { fontSize: '14px', color: '#6b7280', margin: 0 },
+  logoutBtn: { border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontWeight: 'bold' },
+  actionArea: { marginBottom: '20px' },
+  createBtn: { display: 'block', width: '100%', padding: '15px', backgroundColor: '#005596', color: 'white', textAlign: 'center', borderRadius: '10px', textDecoration: 'none', fontWeight: 'bold' },
   ticketList: { display: 'flex', flexDirection: 'column', gap: '15px' },
-  emptyState: { textAlign: 'center', color: '#9ca3af', marginTop: '20px' },
-  
-  ticketCard: { backgroundColor: 'white', padding: '16px', borderRadius: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', border: '1px solid #e5e7eb' },
+  ticketCard: { backgroundColor: 'white', padding: '16px', borderRadius: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' },
   cardHeader: { display: 'flex', justifyContent: 'space-between', marginBottom: '10px' },
   categoryBadge: { fontSize: '12px', fontWeight: 'bold', color: '#4b5563', backgroundColor: '#f3f4f6', padding: '4px 8px', borderRadius: '6px' },
-  urgentBadge: { fontSize: '10px', fontWeight: 'bold', color: 'white', backgroundColor: '#ef4444', padding: '4px 8px', borderRadius: '6px' },
-  description: { fontSize: '14px', color: '#1f2937', margin: '0 0 10px 0', lineHeight: '1.4' },
-  location: { fontSize: '12px', color: '#6b7280', marginBottom: '12px' },
-  cardFooter: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f3f4f6', paddingTop: '10px' },
-  date: { fontSize: '12px', color: '#9ca3af' }
+  description: { fontSize: '14px', color: '#1f2937', marginBottom: '10px' },
+  cardFooter: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', borderTop: '1px solid #f3f4f6', paddingTop: '10px' },
+  date: { fontSize: '12px', color: '#9ca3af' },
+  
+  // Nouveaux Styles pour la Validation
+  validateBtn: { backgroundColor: '#7e22ce', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' },
+  ratingDisplay: { fontSize: '12px', fontWeight: 'bold', color: '#d97706' },
+  
+  // Styles de la Modale (Popup)
+  modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
+  modalCard: { backgroundColor: 'white', padding: '25px', borderRadius: '12px', width: '90%', maxWidth: '350px', textAlign: 'center' },
+  label: { display: 'block', fontWeight: 'bold', marginBottom: '10px', marginTop: '15px' },
+  starContainer: { marginBottom: '15px' },
+  textarea: { width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #ddd', minHeight: '60px', marginBottom: '20px' },
+  modalActions: { display: 'flex', gap: '10px', justifyContent: 'center' },
+  cancelBtn: { padding: '10px 20px', border: 'none', background: '#f3f4f6', borderRadius: '8px', cursor: 'pointer' },
+  confirmBtn: { padding: '10px 20px', border: 'none', background: '#16a34a', color: 'white', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }
 };

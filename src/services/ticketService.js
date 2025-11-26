@@ -1,6 +1,5 @@
-// src/services/ticketService.js
 import { db, storage } from "../firebase";
-import { collection, addDoc, query, where, getDocs } from "firebase/firestore";
+import { collection, addDoc, query, where, getDocs, doc, updateDoc } from "firebase/firestore"; 
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 
@@ -23,7 +22,21 @@ export const getStudentTickets = async (studentId) => {
     throw error;
   }
 };
-
+export const validateTicket = async (ticketId, rating, comment) => {
+  try {
+    const ticketRef = doc(db, "tickets", ticketId);
+    
+    await updateDoc(ticketRef, {
+      status: "completed",       // Statut final du cycle
+      rating: rating,            // Note de 1 à 5 [cite: 31]
+      studentComment: comment,   // Feedback optionnel
+      validatedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error("Erreur validation:", error);
+    throw error;
+  }
+};
 
 
 /**
