@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getAllTickets, getArtisans, assignTicket, updateArtisan, deleteArtisan } from '../services/adminService';
+import { getAllTickets, getArtisans, assignTicket, updateArtisan, deleteArtisan, getStatistics, getStudents, toggleStudentStatus } from '../services/adminService';
 import { logoutUser } from '../services/authService';
 import { useNavigate, Link } from 'react-router-dom';
 
@@ -15,15 +15,22 @@ export default function AdminDashboard() {
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterUrgent, setFilterUrgent] = useState("all");
   const [sortBy, setSortBy] = useState("recent");
+  const [statistics, setStatistics] = useState(null);
+  const [students, setStudents] = useState([]);
+  const [filterStudentStatus, setFilterStudentStatus] = useState("all");
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const ticketsData = await getAllTickets();
         const artisansData = await getArtisans();
+        const statsData = await getStatistics();
+        const studentsData = await getStudents();
         const sortedTickets = ticketsData.sort((a, b) => Number(b.isUrgent) - Number(a.isUrgent));
         setTickets(sortedTickets);
         setArtisans(artisansData);
+        setStatistics(statsData);
+        setStudents(studentsData);
       } catch (err) {
         console.error(err);
       } finally {
@@ -93,6 +100,19 @@ export default function AdminDashboard() {
     navigate('/login');
   };
 
+  const handleToggleStudentStatus = async (studentId, currentStatus) => {
+    try {
+      await toggleStudentStatus(studentId, currentStatus);
+      setStudents(students.map(s =>
+        s.id === studentId ? { ...s, isActive: !s.isActive } : s
+      ));
+      alert(currentStatus ? "Compte désactivé" : "Compte activé");
+    } catch (err) {
+      console.error(err);
+      alert("Erreur lors de la mise à jour");
+    }
+  };
+
   const getFilteredAndSortedTickets = () => {
     let filtered = tickets.filter(ticket => {
       const statusMatch = filterStatus === "all" || ticket.status === filterStatus;
@@ -138,6 +158,18 @@ export default function AdminDashboard() {
           >
             👨‍🔧 Gérer les Artisans
           </button>
+          <button 
+            onClick={() => setActiveTab("statistics")}
+            style={activeTab === "statistics" ? { ...styles.navButton, ...styles.navButtonActive } : styles.navButton}
+          >
+            📊 Statistiques & Rapports
+          </button>
+          <button 
+            onClick={() => setActiveTab("students")}
+            style={activeTab === "students" ? { ...styles.navButton, ...styles.navButtonActive } : styles.navButton}
+          >
+            👨‍🎓 Gestion Étudiants
+          </button>
         </nav>
         <button onClick={handleLogout} style={styles.logoutBtnSidebar}>
           🚪 Déconnexion
@@ -147,7 +179,10 @@ export default function AdminDashboard() {
       <main style={styles.mainContent}>
         <header style={styles.header}>
           <h1 style={styles.pageTitle}>
-            {activeTab === "tickets" ? "📋 Gestion des Tickets" : "👨‍🔧 Gestion des Artisans"}
+            {activeTab === "tickets" ? "📋 Gestion des Tickets" : 
+             activeTab === "artisans" ? "👨‍🔧 Gestion des Artisans" :
+             activeTab === "statistics" ? "📊 Statistiques & Rapports" :
+             "👨‍🎓 Gestion des Étudiants"}
           </h1>
           {activeTab === "artisans" && (
             <Link to="/admin/create-artisan" style={styles.addBtn}>+ Ajouter Artisan</Link>
@@ -328,6 +363,210 @@ export default function AdminDashboard() {
             {artisans.length === 0 && (
               <div style={styles.emptyState}>
                 <p>📭 Aucun artisan trouvé. <Link to="/admin/create-artisan" style={styles.addArtisanLink}>Ajouter un artisan</Link></p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "students" && (
+          <div style={styles.section}>
+            {students.length === 0 ? (
+              <div style={styles.emptyState}>
+                <p>📭 Aucun étudiant trouvé</p>
+              </div>
+            ) : (
+              <div>
+                <div style={styles.filterBar}>
+                  <select value={filterStudentStatus} onChange={(e) => setFilterStudentStatus(e.target.value)} style={styles.filterSelect}>
+                    <option value="all">Tous les étudiants</option>
+                    <option value="active">Actifs</option>
+                    <option value="inactive">Désactivés</option>
+                  </select>
+                </div>
+
+                <div style={styles.studentsGrid}>
+                  {students
+                    .filter(student => {
+                      if (filterStudentStatus === "active") return student.isActive;
+                      if (filterStudentStatus === "inactive") return !student.isActive;
+                      return true;
+                    })
+                    .map(student => (
+                      <div key={student.id} style={styles.studentCard}>
+                        <div style={styles.studentHeader}>
+                          <div style={styles.studentAvatar}>👨‍🎓</div>
+                          <div style={styles.studentStatus}>
+                            {student.isActive ? (
+                              <span style={styles.activeBadge}>✓ Actif</span>
+                            ) : (
+                              <span style={styles.inactiveBadge}>✗ Inactif</span>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div style={styles.studentInfo}>
+                          <h3 style={styles.studentName}>{student.prenom} {student.nom}</h3>
+                          <p style={styles.studentDetail}>
+                            <strong>Email:</strong> {student.email}
+                          </p>
+                          <p style={styles.studentDetail}>
+                            <strong>Tél:</strong> {student.telephone || "N/A"}
+                          </p>
+                        </div>
+
+                        <div style={styles.ticketsStats}>
+                          <div style={styles.statItem}>
+                            <span style={styles.statLabel}>Total</span>
+                            <span style={styles.statValue}>{student.totalTickets}</span>
+                          </div>
+                          <div style={styles.statItem}>
+                            <span style={styles.statLabel}>En attente</span>
+                            <span style={{...styles.statValue, color: '#f59e0b'}}>{student.pendingTickets}</span>
+                          </div>
+                          <div style={styles.statItem}>
+                            <span style={styles.statLabel}>En cours</span>
+                            <span style={{...styles.statValue, color: '#3b82f6'}}>{student.inProgressTickets}</span>
+                          </div>
+                          <div style={styles.statItem}>
+                            <span style={styles.statLabel}>Complétés</span>
+                            <span style={{...styles.statValue, color: '#10b981'}}>{student.completedTickets}</span>
+                          </div>
+                        </div>
+
+                        <div style={styles.studentActions}>
+                          <button
+                            onClick={() => handleToggleStudentStatus(student.id, student.isActive)}
+                            style={student.isActive ? styles.deactivateBtn : styles.activateBtn}
+                          >
+                            {student.isActive ? "🔒 Désactiver" : "✓ Activer"}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "statistics" && (
+          <div style={styles.section}>
+            {!statistics ? (
+              <div style={styles.loadingText}>Chargement des statistiques...</div>
+            ) : (
+              <div>
+                {/* Cards d'overview */}
+                <div style={styles.metricsGrid}>
+                  <div style={styles.metricCard}>
+                    <div style={styles.metricIcon}>📌</div>
+                    <div style={styles.metricContent}>
+                      <h3 style={styles.metricLabel}>Total Interventions</h3>
+                      <p style={styles.metricValue}>{statistics.totalTickets}</p>
+                    </div>
+                  </div>
+
+                  <div style={styles.metricCard}>
+                    <div style={styles.metricIcon}>⏳</div>
+                    <div style={styles.metricContent}>
+                      <h3 style={styles.metricLabel}>Temps Moyen Réponse</h3>
+                      <p style={styles.metricValue}>{statistics.averageResponseTime}h</p>
+                    </div>
+                  </div>
+
+                  <div style={styles.metricCard}>
+                    <div style={styles.metricIcon}>✅</div>
+                    <div style={styles.metricContent}>
+                      <h3 style={styles.metricLabel}>Complétées</h3>
+                      <p style={styles.metricValue}>{statistics.statusCounts.completed}</p>
+                    </div>
+                  </div>
+
+                  <div style={styles.metricCard}>
+                    <div style={styles.metricIcon}>⚙️</div>
+                    <div style={styles.metricContent}>
+                      <h3 style={styles.metricLabel}>En Cours</h3>
+                      <p style={styles.metricValue}>{statistics.statusCounts.in_progress}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Statuts détaillés */}
+                <div style={styles.statisticsContainer}>
+                  <div style={styles.chartSection}>
+                    <h3 style={styles.chartTitle}>📊 Distribution des Statuts</h3>
+                    <div style={styles.statusGrid}>
+                      <div style={styles.statusItem}>
+                        <span style={styles.statusLabel}>En Attente</span>
+                        <div style={styles.statusBar}>
+                          <div style={{...styles.statusFill, width: `${(statistics.statusCounts.pending / statistics.totalTickets * 100) || 0}%`, backgroundColor: '#fbbf24'}}></div>
+                        </div>
+                        <span style={styles.statusCount}>{statistics.statusCounts.pending}</span>
+                      </div>
+                      <div style={styles.statusItem}>
+                        <span style={styles.statusLabel}>En Cours</span>
+                        <div style={styles.statusBar}>
+                          <div style={{...styles.statusFill, width: `${(statistics.statusCounts.in_progress / statistics.totalTickets * 100) || 0}%`, backgroundColor: '#3b82f6'}}></div>
+                        </div>
+                        <span style={styles.statusCount}>{statistics.statusCounts.in_progress}</span>
+                      </div>
+                      <div style={styles.statusItem}>
+                        <span style={styles.statusLabel}>Terminé (Artisan)</span>
+                        <div style={styles.statusBar}>
+                          <div style={{...styles.statusFill, width: `${(statistics.statusCounts.termine_artisan / statistics.totalTickets * 100) || 0}%`, backgroundColor: '#10b981'}}></div>
+                        </div>
+                        <span style={styles.statusCount}>{statistics.statusCounts.termine_artisan}</span>
+                      </div>
+                      <div style={styles.statusItem}>
+                        <span style={styles.statusLabel}>Clôturé</span>
+                        <div style={styles.statusBar}>
+                          <div style={{...styles.statusFill, width: `${(statistics.statusCounts.completed / statistics.totalTickets * 100) || 0}%`, backgroundColor: '#06b6d4'}}></div>
+                        </div>
+                        <span style={styles.statusCount}>{statistics.statusCounts.completed}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Top catégories */}
+                  <div style={styles.chartSection}>
+                    <h3 style={styles.chartTitle}>🏆 Top 5 Catégories de Pannes</h3>
+                    <div style={styles.categoriesContainer}>
+                      {statistics.topCategories.map((item, idx) => (
+                        <div key={idx} style={styles.categoryRow}>
+                          <span style={styles.categoryRank}>{idx + 1}.</span>
+                          <span style={styles.categoryName}>{item.category}</span>
+                          <div style={styles.categoryBar}>
+                            <div style={{
+                              ...styles.categoryBarFill,
+                              width: `${(item.count / statistics.topCategories[0].count * 100)}%`
+                            }}></div>
+                          </div>
+                          <span style={styles.categoryValue}>{item.count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Interventions par mois */}
+                  <div style={styles.chartSection}>
+                    <h3 style={styles.chartTitle}>📈 Interventions par Mois</h3>
+                    <div style={styles.monthlyContainer}>
+                      {Object.entries(statistics.interventionsByMonth)
+                        .sort()
+                        .slice(-6)
+                        .map(([month, count]) => {
+                          const maxCount = Math.max(...Object.values(statistics.interventionsByMonth));
+                          const height = (count / maxCount) * 150;
+                          return (
+                            <div key={month} style={styles.barContainer}>
+                              <div style={{...styles.bar, height: `${height}px`}}></div>
+                              <span style={styles.monthLabel}>{month}</span>
+                              <span style={styles.barValue}>{count}</span>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -682,5 +921,292 @@ const styles = {
     color: '#005596',
     textDecoration: 'none',
     fontWeight: 'bold'
+  },
+  metricsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+    gap: '15px',
+    marginBottom: '30px'
+  },
+  metricCard: {
+    backgroundColor: '#f9fafb',
+    padding: '20px',
+    borderRadius: '8px',
+    border: '1px solid #e5e7eb',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '15px',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+    transition: 'all 0.3s ease'
+  },
+  metricIcon: {
+    fontSize: '32px',
+    minWidth: '50px',
+    textAlign: 'center'
+  },
+  metricContent: {
+    flex: 1
+  },
+  metricLabel: {
+    margin: '0 0 8px 0',
+    fontSize: '13px',
+    color: '#64748b',
+    fontWeight: '600',
+    textTransform: 'uppercase'
+  },
+  metricValue: {
+    margin: 0,
+    fontSize: '24px',
+    fontWeight: 'bold',
+    color: '#005596'
+  },
+  statisticsContainer: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+    gap: '25px'
+  },
+  chartSection: {
+    backgroundColor: '#f9fafb',
+    padding: '20px',
+    borderRadius: '8px',
+    border: '1px solid #e5e7eb'
+  },
+  chartTitle: {
+    margin: '0 0 20px 0',
+    fontSize: '16px',
+    fontWeight: 'bold',
+    color: '#1e293b'
+  },
+  statusGrid: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '15px'
+  },
+  statusItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px'
+  },
+  statusLabel: {
+    minWidth: '120px',
+    fontSize: '13px',
+    fontWeight: '500',
+    color: '#475569'
+  },
+  statusBar: {
+    flex: 1,
+    height: '24px',
+    backgroundColor: '#e2e8f0',
+    borderRadius: '4px',
+    overflow: 'hidden'
+  },
+  statusFill: {
+    height: '100%',
+    borderRadius: '4px',
+    transition: 'width 0.3s ease'
+  },
+  statusCount: {
+    minWidth: '40px',
+    textAlign: 'right',
+    fontSize: '13px',
+    fontWeight: 'bold',
+    color: '#1e293b'
+  },
+  categoriesContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px'
+  },
+  categoryRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    padding: '10px',
+    backgroundColor: 'white',
+    borderRadius: '6px'
+  },
+  categoryRank: {
+    fontWeight: 'bold',
+    fontSize: '14px',
+    color: '#005596',
+    minWidth: '30px'
+  },
+  categoryName: {
+    minWidth: '100px',
+    fontSize: '13px',
+    fontWeight: '500',
+    color: '#475569'
+  },
+  categoryBar: {
+    flex: 1,
+    height: '20px',
+    backgroundColor: '#e2e8f0',
+    borderRadius: '4px',
+    overflow: 'hidden'
+  },
+  categoryBarFill: {
+    height: '100%',
+    backgroundColor: '#3b82f6',
+    borderRadius: '4px',
+    transition: 'width 0.3s ease'
+  },
+  categoryValue: {
+    minWidth: '40px',
+    textAlign: 'right',
+    fontSize: '13px',
+    fontWeight: 'bold',
+    color: '#1e293b'
+  },
+  monthlyContainer: {
+    display: 'flex',
+    alignItems: 'flex-end',
+    justifyContent: 'space-around',
+    gap: '10px',
+    height: '200px',
+    padding: '10px 0'
+  },
+  barContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '8px',
+    flex: 1
+  },
+  bar: {
+    width: '100%',
+    backgroundColor: '#005596',
+    borderRadius: '4px 4px 0 0',
+    transition: 'all 0.3s ease',
+    minHeight: '10px'
+  },
+  monthLabel: {
+    fontSize: '12px',
+    fontWeight: '500',
+    color: '#64748b',
+    whiteSpace: 'nowrap'
+  },
+  barValue: {
+    fontSize: '12px',
+    fontWeight: 'bold',
+    color: '#1e293b'
+  },
+  loadingText: {
+    textAlign: 'center',
+    padding: '40px',
+    color: '#64748b',
+    fontSize: '16px'
+  },
+  studentsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+    gap: '20px',
+    marginTop: '15px'
+  },
+  studentCard: {
+    backgroundColor: '#f9fafb',
+    padding: '20px',
+    borderRadius: '8px',
+    border: '1px solid #e5e7eb',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+    transition: 'all 0.3s ease',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '15px'
+  },
+  studentHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottom: '1px solid #e5e7eb',
+    paddingBottom: '12px'
+  },
+  studentAvatar: {
+    fontSize: '28px'
+  },
+  studentStatus: {
+    display: 'flex'
+  },
+  activeBadge: {
+    backgroundColor: '#d1fae5',
+    color: '#059669',
+    padding: '6px 12px',
+    borderRadius: '20px',
+    fontSize: '12px',
+    fontWeight: 'bold'
+  },
+  inactiveBadge: {
+    backgroundColor: '#fee2e2',
+    color: '#dc2626',
+    padding: '6px 12px',
+    borderRadius: '20px',
+    fontSize: '12px',
+    fontWeight: 'bold'
+  },
+  studentInfo: {
+    flex: 1
+  },
+  studentName: {
+    margin: '0 0 12px 0',
+    fontSize: '16px',
+    fontWeight: 'bold',
+    color: '#1e293b'
+  },
+  studentDetail: {
+    margin: '6px 0',
+    fontSize: '13px',
+    color: '#64748b'
+  },
+  ticketsStats: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4, 1fr)',
+    gap: '8px',
+    padding: '12px',
+    backgroundColor: 'white',
+    borderRadius: '6px',
+    border: '1px solid #e5e7eb'
+  },
+  statItem: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    textAlign: 'center'
+  },
+  statLabel: {
+    fontSize: '11px',
+    color: '#94a3b8',
+    fontWeight: '500',
+    marginBottom: '4px'
+  },
+  statValue: {
+    fontSize: '18px',
+    fontWeight: 'bold',
+    color: '#005596'
+  },
+  studentActions: {
+    display: 'flex',
+    gap: '8px',
+    justifyContent: 'center'
+  },
+  activateBtn: {
+    backgroundColor: '#10b981',
+    color: 'white',
+    border: 'none',
+    padding: '10px 16px',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontSize: '13px',
+    fontWeight: 'bold',
+    transition: 'all 0.3s ease'
+  },
+  deactivateBtn: {
+    backgroundColor: '#ef4444',
+    color: 'white',
+    border: 'none',
+    padding: '10px 16px',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontSize: '13px',
+    fontWeight: 'bold',
+    transition: 'all 0.3s ease'
   }
 };
