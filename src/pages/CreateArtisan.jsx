@@ -11,12 +11,13 @@ export default function CreateArtisan() {
     prenom: "",
     nom: "",
     email: "",
+    telephone: "",
     password: "",
     specialite: "Plomberie" // Valeur par défaut
   });
 
   // Liste des spécialités basées sur les catégories de pannes (Sec 2.2) [cite: 22]
-  const specialites = ["Plomberie", "Électricité", "Ménage", "Menuiserie", "Autre"];
+  const specialites = ["Plomberie", "Électricité", "Ménage", "WIFI", "Autre"];
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -71,6 +72,15 @@ export default function CreateArtisan() {
             type="email" 
             name="email" 
             placeholder="Email professionnel" 
+            onChange={handleChange} 
+            style={styles.input} 
+            required 
+          />
+
+          <input 
+            type="tel" 
+            name="telephone" 
+            placeholder="Numéro de téléphone" 
             onChange={handleChange} 
             style={styles.input} 
             required 
