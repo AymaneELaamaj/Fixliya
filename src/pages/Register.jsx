@@ -5,14 +5,12 @@ import { registerUser } from "../services/authService";
 export default function Register() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    prenom: "",
     nom: "",
+    prenom: "",
     email: "",
-    telephone: "", // 
+    telephone: "",
     password: "",
-    confirmPassword: "",
-    pavillon: "",
-    chambre: ""
+    confirmPassword: ""
   });
   const [error, setError] = useState("");
 
@@ -53,19 +51,7 @@ export default function Register() {
 
           <input type="email" name="email" placeholder="Email étudiant" onChange={handleChange} style={styles.input} required />
           
-          {/* Nouveau champ Téléphone requis par le PDF  */}
           <input type="tel" name="telephone" placeholder="Téléphone" onChange={handleChange} style={styles.input} required />
-
-          <div style={styles.row}>
-            <select name="pavillon" onChange={handleChange} style={styles.select} required>
-              <option value="">Choisir Pavillon</option>
-              <option value="A">Pavillon A</option>
-              <option value="B">Pavillon B</option>
-              <option value="C">Pavillon C</option>
-              <option value="D">Pavillon D</option>
-            </select>
-            <input name="chambre" placeholder="N° Chambre" onChange={handleChange} style={styles.input} required />
-          </div>
 
           <input type="password" name="password" placeholder="Mot de passe" onChange={handleChange} style={styles.input} required />
           <input type="password" name="confirmPassword" placeholder="Confirmer mot de passe" onChange={handleChange} style={styles.input} required />
