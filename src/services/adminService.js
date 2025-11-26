@@ -68,6 +68,7 @@ export const createArtisanAccount = async (artisanData) => {
       prenom: artisanData.prenom,
       nom: artisanData.nom,
       email: artisanData.email,
+      telephone: artisanData.telephone,
       specialite: artisanData.specialite, // Ex: Plomberie
       role: "artisan",
       createdAt: new Date().toISOString()
@@ -90,6 +91,7 @@ export const updateArtisan = async (artisanId, artisanData) => {
     prenom: artisanData.prenom,
     nom: artisanData.nom,
     email: artisanData.email,
+    telephone: artisanData.telephone,
     specialite: artisanData.specialite,
     updatedAt: new Date().toISOString()
   });
