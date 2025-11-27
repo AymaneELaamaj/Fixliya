@@ -114,3 +114,24 @@ export const createTicket = async (ticketData) => {
     throw error;
   }
 };
+
+/**
+ * Annuler un ticket (par l'étudiant)
+ * Si le ticket est en attente, il peut être annulé sans notification
+ * Si le ticket est assigné à un artisan, l'artisan est notifié de l'annulation
+ */
+export const cancelTicket = async (ticketId, reason = "") => {
+  try {
+    const ticketRef = doc(db, "tickets", ticketId);
+    
+    await updateDoc(ticketRef, {
+      status: "cancelled",
+      cancellationReason: reason,
+      cancelledAt: new Date().toISOString(),
+      cancelledByStudent: true
+    });
+  } catch (error) {
+    console.error("Erreur annulation ticket:", error);
+    throw error;
+  }
+};

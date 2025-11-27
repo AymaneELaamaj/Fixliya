@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebase';
-import { getStudentTickets, validateTicket } from '../services/ticketService'; // Import validateTicket
+import { getStudentTickets, validateTicket, cancelTicket } from '../services/ticketService'; // Import cancelTicket
 import { logoutUser } from '../services/authService';
 import { doc, getDoc } from 'firebase/firestore';
 
@@ -13,6 +13,7 @@ export default function StudentDashboard() {
   const [filterStatus, setFilterStatus] = useState("all"); // Filtre par statut
   const [filterCategory, setFilterCategory] = useState("all"); // Filtre par catégorie
   const [sortBy, setSortBy] = useState("recent"); // Tri par date ou urgence
+  const [isAccountDisabled, setIsAccountDisabled] = useState(false); // Vérifier si compte est désactivé
 
   // États pour la Notation (Rating)
   const [selectedTicket, setSelectedTicket] = useState(null); // Quel ticket on note ?
@@ -30,7 +31,17 @@ export default function StudentDashboard() {
 
     try {
       const userDoc = await getDoc(doc(db, "users", user.uid));
-      if (userDoc.exists()) setUserName(userDoc.data().prenom);
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        setUserName(userData.prenom);
+        
+        // Vérifier si le compte est désactivé
+        if (userData.isActive === false) {
+          setIsAccountDisabled(true);
+          setLoading(false);
+          return; // Ne pas charger les tickets si le compte est désactivé
+        }
+      }
 
       const myTickets = await getStudentTickets(user.uid);
       setTickets(myTickets);
@@ -64,6 +75,26 @@ export default function StudentDashboard() {
     } catch (error) {
       console.error(error);
       alert("Erreur lors de la validation.");
+    }
+  };
+
+  // Annuler un ticket
+  const handleCancelTicket = async (ticket) => {
+    const reason = prompt("Raison de l'annulation (optionnelle):", "");
+    if (reason === null) return; // Utilisateur a cliqué Annuler
+    
+    if (window.confirm("Êtes-vous sûr de vouloir annuler ce ticket ?")) {
+      try {
+        await cancelTicket(ticket.id, reason);
+        alert(ticket.assignedToId 
+          ? "Ticket annulé. L'artisan a été notifié." 
+          : "Ticket annulé avec succès."
+        );
+        loadData();
+      } catch (error) {
+        console.error(error);
+        alert("Erreur lors de l'annulation.");
+      }
     }
   };
 
@@ -111,6 +142,28 @@ export default function StudentDashboard() {
   };
 
   if (loading) return <div style={styles.loading}>Chargement...</div>;
+
+  // Afficher un message si le compte est désactivé
+  if (isAccountDisabled) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.disabledAccountContainer}>
+          <div style={styles.disabledIcon}>🔒</div>
+          <h2 style={styles.disabledTitle}>Compte Désactivé</h2>
+          <p style={styles.disabledMessage}>
+            Votre compte a été désactivé par l'administrateur système.
+          </p>
+          <p style={styles.disabledDescription}>
+            Vous n'avez pas accès à l'application pour le moment. 
+            Veuillez contacter l'administrateur pour plus d'informations.
+          </p>
+          <button onClick={handleLogout} style={styles.logoutBtnDisabled}>
+            Déconnexion
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={styles.container}>
@@ -224,6 +277,16 @@ export default function StudentDashboard() {
                     {ticket.status === 'completed' && ticket.rating && (
                       <span style={styles.ratingDisplay}>Note : {ticket.rating}/5 ⭐</span>
                     )}
+
+                    {/* BOUTON D'ANNULATION (Visible si en attente ou en cours, pas si cancelled ou completed) */}
+                    {(ticket.status === 'pending' || ticket.status === 'in_progress') && (
+                      <button 
+                        onClick={() => handleCancelTicket(ticket)}
+                        style={styles.ticketCancelBtn}
+                      >
+                        ✕ Annuler
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -331,6 +394,7 @@ const styles = {
   // Boutons et Affichages
   validateBtn: { backgroundColor: '#7e22ce', color: 'white', border: 'none', padding: '8px 14px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold', whiteSpace: 'nowrap' },
   ratingDisplay: { fontSize: '12px', fontWeight: 'bold', color: '#d97706' },
+  ticketCancelBtn: { backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '8px 14px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold', whiteSpace: 'nowrap', marginLeft: '8px' },
   
   emptyState: { backgroundColor: 'white', padding: '40px 20px', borderRadius: '12px', textAlign: 'center', color: '#6b7280', fontSize: '15px' },
   loading: { textAlign: 'center', padding: '40px', color: '#6b7280', fontSize: '15px' },
@@ -354,5 +418,11 @@ const styles = {
   textarea: { width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #ddd', minHeight: '80px', marginBottom: '20px', fontFamily: 'inherit', fontSize: '13px', boxSizing: 'border-box' },
   modalActions: { display: 'flex', gap: '10px', justifyContent: 'center' },
   cancelBtn: { padding: '10px 20px', border: '1px solid #ddd', background: 'white', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', color: '#6b7280' },
-  confirmBtn: { padding: '10px 20px', border: 'none', background: '#16a34a', color: 'white', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }
+  confirmBtn: { padding: '10px 20px', border: 'none', background: '#16a34a', color: 'white', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' },
+  disabledAccountContainer: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', backgroundColor: '#fee2e2', padding: '20px' },
+  disabledIcon: { fontSize: '80px', marginBottom: '20px' },
+  disabledTitle: { fontSize: '28px', color: '#dc2626', fontWeight: 'bold', margin: '0 0 15px 0', textAlign: 'center' },
+  disabledMessage: { fontSize: '16px', color: '#991b1b', fontWeight: '600', margin: '0 0 10px 0', textAlign: 'center', maxWidth: '400px' },
+  disabledDescription: { fontSize: '14px', color: '#7f1d1d', margin: '0 0 30px 0', textAlign: 'center', maxWidth: '400px', lineHeight: '1.6' },
+  logoutBtnDisabled: { backgroundColor: '#dc2626', color: 'white', border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease' }
 };

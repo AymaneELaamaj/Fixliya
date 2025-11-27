@@ -19,7 +19,8 @@ export default function CreateTicket() {
   const [building, setBuilding] = useState("");
   const [roomNumber, setRoomNumber] = useState("");
   const [commonAreaName, setCommonAreaName] = useState("");
-  
+  const [isAccountDisabled, setIsAccountDisabled] = useState(false); // Compte désactivé
+
   const [userData, setUserData] = useState(null);
 
   // Références pour la caméra et l'audio
@@ -36,7 +37,14 @@ export default function CreateTicket() {
       if (auth.currentUser) {
         const docRef = doc(db, "users", auth.currentUser.uid);
         const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) setUserData(docSnap.data());
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setUserData(data);
+          // Vérifier si le compte est désactivé
+          if (data.isActive === false) {
+            setIsAccountDisabled(true);
+          }
+        }
       }
     };
     fetchUser();
@@ -166,7 +174,26 @@ export default function CreateTicket() {
 
   return (
     <div style={styles.container}>
-      <div style={styles.card}>
+      {isAccountDisabled ? (
+        <div style={styles.disabledCard}>
+          <div style={styles.disabledIconLarge}>🔒</div>
+          <h2 style={styles.disabledTitle}>Compte Désactivé</h2>
+          <p style={styles.disabledMessage}>
+            Votre compte a été désactivé par l'administrateur système.
+          </p>
+          <p style={styles.disabledDescription}>
+            Vous n'avez pas accès à la création de nouveaux tickets. 
+            Veuillez contacter l'administrateur pour plus d'informations.
+          </p>
+          <button 
+            onClick={() => window.history.back()} 
+            style={styles.backBtn}
+          >
+            ← Retour
+          </button>
+        </div>
+      ) : (
+        <div style={styles.card}>
         <h2 style={styles.title}>Nouvel Incident</h2>
         
         <form onSubmit={handleSubmit} style={styles.form}>
@@ -363,7 +390,8 @@ export default function CreateTicket() {
             {loading ? "Envoi en cours..." : "Signaler le problème"}
           </button>
         </form>
-      </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -371,6 +399,12 @@ export default function CreateTicket() {
 const styles = {
   container: { padding: '20px', backgroundColor: '#f0f2f5', minHeight: '100vh', display: 'flex', justifyContent: 'center' },
   card: { backgroundColor: 'white', padding: '20px', borderRadius: '12px', width: '100%', maxWidth: '500px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' },
+  disabledCard: { backgroundColor: 'white', padding: '40px', borderRadius: '12px', width: '100%', maxWidth: '400px', textAlign: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' },
+  disabledIconLarge: { fontSize: '60px', marginBottom: '20px' },
+  disabledTitle: { fontSize: '24px', color: '#dc2626', fontWeight: 'bold', margin: '0 0 15px 0' },
+  disabledMessage: { fontSize: '16px', color: '#991b1b', fontWeight: '600', margin: '0 0 10px 0' },
+  disabledDescription: { fontSize: '14px', color: '#7f1d1d', margin: '0 0 25px 0', lineHeight: '1.6' },
+  backBtn: { backgroundColor: '#6b7280', color: 'white', border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease' },
   title: { color: '#005596', marginBottom: '20px', textAlign: 'center' },
   form: { display: 'flex', flexDirection: 'column', gap: '15px' },
   label: { fontWeight: 'bold', fontSize: '14px', color: '#333' },

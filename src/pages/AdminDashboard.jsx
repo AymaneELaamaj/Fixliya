@@ -80,6 +80,14 @@ export default function AdminDashboard() {
 
   const handleAssign = async (ticketId, artisanId) => {
     if (!artisanId) return;
+    
+    // Vérifier si le ticket est annulé
+    const ticket = tickets.find(t => t.id === ticketId);
+    if (ticket && ticket.status === 'cancelled') {
+      alert("Ce ticket a été annulé. Vous ne pouvez pas l'assigner.");
+      return;
+    }
+    
     const selectedArtisan = artisans.find(a => a.id === artisanId);
     if (window.confirm(`Assigner ce ticket à ${selectedArtisan.prenom} ?`)) {
       try {
@@ -198,6 +206,7 @@ export default function AdminDashboard() {
                 <option value="in_progress">En cours</option>
                 <option value="termine_artisan">Terminé (artisan)</option>
                 <option value="completed">Clôturé</option>
+                <option value="cancelled">Annulé</option>
               </select>
 
               <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} style={styles.filterSelect}>
@@ -251,12 +260,15 @@ export default function AdminDashboard() {
                         <span style={getStatusStyle(ticket.status)}>
                           {ticket.status === 'pending' ? '⏳ Attente' : 
                            ticket.status === 'in_progress' ? '⚙️ En cours' : 
-                           ticket.status === 'termine_artisan' ? '✅ Terminé' : '🏁 Clôturé'}
+                           ticket.status === 'termine_artisan' ? '✅ Terminé' :
+                           ticket.status === 'cancelled' ? '❌ Annulé' : '🏁 Clôturé'}
                         </span>
                       </td>
                       <td style={styles.tdCell}>
                         {ticket.status === 'completed' ? (
                           <span style={{ color: '#6b7280', fontSize: '12px' }}>Clôturé</span>
+                        ) : ticket.status === 'cancelled' ? (
+                          <span style={{ color: '#dc2626', fontSize: '12px', fontWeight: 'bold' }}>Annulé</span>
                         ) : ticket.assignedToName ? (
                           <strong style={{ color: '#059669' }}>✓ {ticket.assignedToName}</strong>
                         ) : (
@@ -587,6 +599,7 @@ const getStatusStyle = (status) => {
   if (status === 'pending') return { ...base, backgroundColor: '#fef3c7', color: '#d97706' };
   if (status === 'in_progress') return { ...base, backgroundColor: '#dbeafe', color: '#2563eb' };
   if (status === 'termine_artisan') return { ...base, backgroundColor: '#d1fae5', color: '#059669' };
+  if (status === 'cancelled') return { ...base, backgroundColor: '#fee2e2', color: '#dc2626' };
   return { ...base, backgroundColor: '#dcfce7', color: '#16a34a' };
 };
 
