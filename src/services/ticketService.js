@@ -102,6 +102,10 @@ export const createTicket = async (ticketData) => {
       imageUrl: ticketData.imageUrl || "https://placehold.co/600x400?text=Image+Non+Disponible",
       audioUrl: ticketData.audioUrl || null,
       isUrgent: ticketData.isUrgent,
+      ticketType: ticketData.ticketType || "urgent", // "urgent" ou "planifier"
+      scheduledDate: ticketData.scheduledDate || null,
+      scheduledTime: ticketData.scheduledTime || null,
+      scheduledDateTime: ticketData.scheduledDateTime || null,
       status: "pending",
       createdAt: new Date().toISOString()
     };

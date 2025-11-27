@@ -11,7 +11,9 @@ export default function CreateTicket() {
   // États
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
-  const [isUrgent, setIsUrgent] = useState(false);
+  const [ticketType, setTicketType] = useState("urgent"); // "urgent" ou "planifier"
+  const [scheduledDate, setScheduledDate] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("");
   const [imageFile, setImageFile] = useState(null);
   const [audioFile, setAudioFile] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -141,6 +143,9 @@ export default function CreateTicket() {
     if (locationType === "commun" && !commonAreaName) {
       return alert("Veuillez renseigner le nom du local commun.");
     }
+    if (ticketType === "planifier" && (!scheduledDate || !scheduledTime)) {
+      return alert("Veuillez préciser la date et l'heure pour une intervention planifiée.");
+    }
 
     setLoading(true);
     try {
@@ -158,7 +163,11 @@ export default function CreateTicket() {
         location: location,
         category,
         description,
-        isUrgent
+        isUrgent: ticketType === "urgent",
+        ticketType: ticketType, // "urgent" ou "planifier"
+        scheduledDate: ticketType === "planifier" ? scheduledDate : null,
+        scheduledTime: ticketType === "planifier" ? scheduledTime : null,
+        scheduledDateTime: ticketType === "planifier" ? `${scheduledDate} ${scheduledTime}` : null
       };
 
       await createTicket(ticketData);
@@ -291,18 +300,52 @@ export default function CreateTicket() {
             </div>
           )}
 
-          {/* Urgence [cite: 24] */}
-          <div style={styles.urgentBox}>
-            <input 
-              type="checkbox" 
-              checked={isUrgent} 
-              onChange={(e) => setIsUrgent(e.target.checked)}
-              id="urgent"
-            />
-            <label htmlFor="urgent" style={styles.urgentLabel}>
-              URGENT (ex: Inondation, danger)
-            </label>
+          {/* Urgence ou Planification */}
+          <label style={styles.label}>⏰ Type d'intervention :</label>
+          <div style={styles.typeGrid}>
+            <button
+              type="button"
+              onClick={() => setTicketType("urgent")}
+              style={ticketType === "urgent" ? styles.typeButtonActive : styles.typeButton}
+            >
+              🚨 Urgent
+            </button>
+            <button
+              type="button"
+              onClick={() => setTicketType("planifier")}
+              style={ticketType === "planifier" ? styles.typeButtonActive : styles.typeButton}
+            >
+              📅 Planifier
+            </button>
           </div>
+
+          {/* Champs de planification (visibles si "Planifier" est sélectionné) */}
+          {ticketType === "planifier" && (
+            <div style={styles.schedulingSection}>
+              <div style={styles.row}>
+                <div style={styles.inputGroup}>
+                  <label style={styles.smallLabel}>Date :</label>
+                  <input 
+                    type="date" 
+                    value={scheduledDate}
+                    onChange={(e) => setScheduledDate(e.target.value)}
+                    style={styles.select}
+                    required
+                  />
+                </div>
+                <div style={styles.inputGroup}>
+                  <label style={styles.smallLabel}>Heure :</label>
+                  <input 
+                    type="time" 
+                    value={scheduledTime}
+                    onChange={(e) => setScheduledTime(e.target.value)}
+                    style={styles.select}
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Description */}
           <textarea
@@ -415,6 +458,10 @@ const styles = {
   catButtonActive: { padding: '10px', border: '2px solid #005596', borderRadius: '8px', background: '#e6f0fa', color: '#005596', fontWeight: 'bold', cursor: 'pointer' },
   locationButton: { padding: '12px', border: '1px solid #ddd', borderRadius: '8px', background: 'white', cursor: 'pointer', fontSize: '13px', fontWeight: '500' },
   locationButtonActive: { padding: '12px', border: '2px solid #10b981', borderRadius: '8px', background: '#ecfdf5', color: '#10b981', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' },
+  typeGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' },
+  typeButton: { padding: '12px', border: '1px solid #ddd', borderRadius: '8px', background: 'white', cursor: 'pointer', fontSize: '13px', fontWeight: '500' },
+  typeButtonActive: { padding: '12px', border: '2px solid #ef4444', borderRadius: '8px', background: '#fee2e2', color: '#dc2626', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' },
+  schedulingSection: { backgroundColor: '#f9fafb', padding: '12px', borderRadius: '8px', border: '1px solid #e5e7eb' },
   locationSection: { backgroundColor: '#f9fafb', padding: '12px', borderRadius: '8px', border: '1px solid #e5e7eb' },
   row: { display: 'flex', gap: '10px' },
   inputGroup: { flex: 1 },
