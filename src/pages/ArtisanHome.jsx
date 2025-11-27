@@ -12,8 +12,9 @@ export default function ArtisanHome() {
   const [selectedMission, setSelectedMission] = useState(null);
   const [showProofModal, setShowProofModal] = useState(false);
   const [proofPhotos, setProofPhotos] = useState({ before: null, after: null });
-  const [cameraMode, setCameraMode] = useState('before');
+  const [currentPhotoStep, setCurrentPhotoStep] = useState('before'); // 'before' ou 'after'
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [previewPhoto, setPreviewPhoto] = useState(null); // Aperçu avant de confirmer
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const navigate = useNavigate();
@@ -65,13 +66,32 @@ export default function ArtisanHome() {
       
       canvasRef.current.toBlob((blob) => {
         const photoUrl = URL.createObjectURL(blob);
-        setProofPhotos({
-          ...proofPhotos,
-          [cameraMode]: { url: photoUrl, blob }
-        });
+        // Afficher l'aperçu avant de confirmer
+        setPreviewPhoto({ url: photoUrl, blob, step: currentPhotoStep });
         stopCamera();
       });
     }
+  };
+
+  const confirmPhoto = () => {
+    if (!previewPhoto) return;
+    
+    setProofPhotos({
+      ...proofPhotos,
+      [previewPhoto.step]: previewPhoto
+    });
+    
+    // Passer à l'étape suivante automatiquement
+    if (previewPhoto.step === 'before') {
+      setCurrentPhotoStep('after');
+    }
+    
+    setPreviewPhoto(null);
+  };
+
+  const retakePhoto = () => {
+    setPreviewPhoto(null);
+    startCamera();
   };
 
   const stopCamera = () => {
@@ -86,13 +106,19 @@ export default function ArtisanHome() {
       ...proofPhotos,
       [type]: null
     });
+    // Revenir à cette étape pour reprendre
+    if (type === 'before') {
+      setCurrentPhotoStep('before');
+    }
   };
 
   const openProofModal = (mission) => {
     setSelectedMission(mission);
     setShowProofModal(true);
     setProofPhotos({ before: null, after: null });
-    setCameraMode('before');
+    setCurrentPhotoStep('before');
+    setPreviewPhoto(null);
+    setIsCameraOpen(false);
   };
 
   const submitProof = async () => {
@@ -259,111 +285,195 @@ export default function ArtisanHome() {
               </div>
 
               <div style={styles.proofContainer}>
-                {/* Section Avant */}
-                <div style={styles.proofSection}>
-                  <h3 style={styles.proofTitle}>📷 Photo AVANT</h3>
+                {/* PHASE 1: PHOTO AVANT */}
+                <div style={styles.phaseContainer}>
+                  <div style={styles.phaseHeader}>
+                    <h3 style={styles.phaseTitle}>📷 ÉTAPE 1 : Photo AVANT l'intervention</h3>
+                    <span style={proofPhotos.before ? styles.phaseComplete : styles.phaseIncomplete}>
+                      {proofPhotos.before ? '✅ Complétée' : '⏳ En attente'}
+                    </span>
+                  </div>
+
                   {proofPhotos.before ? (
-                    <div style={styles.photoPreview}>
+                    // Photo déjà prise
+                    <div style={styles.photoConfirmSection}>
                       <img src={proofPhotos.before.url} style={styles.proofImage} alt="Avant" />
-                      <button 
-                        style={styles.deletePhotoBtn}
-                        onClick={() => deletePhoto('before')}
-                      >
-                        🗑️ Supprimer
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      {isCameraOpen && cameraMode === 'before' ? (
-                        <div style={styles.cameraContainer}>
-                          <video ref={videoRef} style={styles.video} autoPlay playsInline />
-                          <div style={styles.cameraButtons}>
-                            <button 
-                              style={styles.captureBtn}
-                              onClick={capturePhoto}
-                            >
-                              📷 Prendre la photo
-                            </button>
-                            <button 
-                              style={styles.cancelPhotoBtn}
-                              onClick={stopCamera}
-                            >
-                              ✕ Annuler
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
+                      <div style={styles.photoActionButtons}>
                         <button 
-                          style={styles.openCameraBtn}
+                          style={styles.retakePhotoBtn}
+                          onClick={() => deletePhoto('before')}
+                        >
+                          🔄 Reprendre cette photo
+                        </button>
+                        <button 
+                          style={styles.confirmPhotoBtn}
+                          onClick={() => setCurrentPhotoStep('after')}
+                        >
+                          ✅ Valider et continuer
+                        </button>
+                      </div>
+                    </div>
+                  ) : previewPhoto && previewPhoto.step === 'before' ? (
+                    // Aperçu avant confirmation
+                    <div style={styles.previewSection}>
+                      <img src={previewPhoto.url} style={styles.proofImage} alt="Aperçu Avant" />
+                      <p style={styles.previewText}>Êtes-vous satisfait de cette photo?</p>
+                      <div style={styles.previewActionButtons}>
+                        <button 
+                          style={styles.retakeBtn}
+                          onClick={retakePhoto}
+                        >
+                          ❌ Reprendre la photo
+                        </button>
+                        <button 
+                          style={styles.confirmBtn}
+                          onClick={confirmPhoto}
+                        >
+                          ✅ Confirmer cette photo
+                        </button>
+                      </div>
+                    </div>
+                  ) : isCameraOpen && currentPhotoStep === 'before' ? (
+                    // Caméra ouverte
+                    <div style={styles.cameraContainer}>
+                      <video ref={videoRef} style={styles.video} autoPlay playsInline />
+                      <div style={styles.cameraButtons}>
+                        <button 
+                          style={styles.captureBtn}
+                          onClick={capturePhoto}
+                        >
+                          📷 Prendre la photo
+                        </button>
+                        <button 
+                          style={styles.cancelPhotoBtn}
                           onClick={() => {
-                            setCameraMode('before');
-                            startCamera();
+                            stopCamera();
+                            setCurrentPhotoStep('before');
                           }}
                         >
-                          📷 Ouvrir caméra
+                          ✕ Annuler
                         </button>
-                      )}
-                    </>
+                      </div>
+                    </div>
+                  ) : (
+                    // Bouton pour ouvrir caméra
+                    <div style={styles.startPhotoSection}>
+                      <div style={styles.instructionText}>
+                        📍 Prenez une photo du problème/zone AVANT l'intervention
+                      </div>
+                      <button 
+                        style={styles.openCameraBtn}
+                        onClick={() => startCamera()}
+                      >
+                        📷 Ouvrir la caméra
+                      </button>
+                    </div>
                   )}
                 </div>
 
-                {/* Section Après */}
-                <div style={styles.proofSection}>
-                  <h3 style={styles.proofTitle}>📷 Photo APRÈS</h3>
-                  {proofPhotos.after ? (
-                    <div style={styles.photoPreview}>
-                      <img src={proofPhotos.after.url} style={styles.proofImage} alt="Après" />
-                      <button 
-                        style={styles.deletePhotoBtn}
-                        onClick={() => deletePhoto('after')}
-                      >
-                        🗑️ Supprimer
-                      </button>
+                {/* PHASE 2: PHOTO APRÈS */}
+                {currentPhotoStep === 'after' && (
+                  <div style={styles.phaseContainer}>
+                    <div style={styles.phaseHeader}>
+                      <h3 style={styles.phaseTitle}>📷 ÉTAPE 2 : Photo APRÈS l'intervention</h3>
+                      <span style={proofPhotos.after ? styles.phaseComplete : styles.phaseIncomplete}>
+                        {proofPhotos.after ? '✅ Complétée' : '⏳ En attente'}
+                      </span>
                     </div>
-                  ) : (
-                    <>
-                      {isCameraOpen && cameraMode === 'after' ? (
-                        <div style={styles.cameraContainer}>
-                          <video ref={videoRef} style={styles.video} autoPlay playsInline />
-                          <div style={styles.cameraButtons}>
-                            <button 
-                              style={styles.captureBtn}
-                              onClick={capturePhoto}
-                            >
-                              📷 Prendre la photo
-                            </button>
-                            <button 
-                              style={styles.cancelPhotoBtn}
-                              onClick={stopCamera}
-                            >
-                              ✕ Annuler
-                            </button>
-                          </div>
+
+                    {proofPhotos.after ? (
+                      // Photo déjà prise
+                      <div style={styles.photoConfirmSection}>
+                        <img src={proofPhotos.after.url} style={styles.proofImage} alt="Après" />
+                        <div style={styles.photoActionButtons}>
+                          <button 
+                            style={styles.retakePhotoBtn}
+                            onClick={() => deletePhoto('after')}
+                          >
+                            🔄 Reprendre cette photo
+                          </button>
+                          <button 
+                            style={styles.confirmPhotoBtn}
+                            onClick={() => {}}
+                          >
+                            ✅ Photo confirmée
+                          </button>
                         </div>
-                      ) : (
+                      </div>
+                    ) : previewPhoto && previewPhoto.step === 'after' ? (
+                      // Aperçu avant confirmation
+                      <div style={styles.previewSection}>
+                        <img src={previewPhoto.url} style={styles.proofImage} alt="Aperçu Après" />
+                        <p style={styles.previewText}>Êtes-vous satisfait de cette photo?</p>
+                        <div style={styles.previewActionButtons}>
+                          <button 
+                            style={styles.retakeBtn}
+                            onClick={retakePhoto}
+                          >
+                            ❌ Reprendre la photo
+                          </button>
+                          <button 
+                            style={styles.confirmBtn}
+                            onClick={confirmPhoto}
+                          >
+                            ✅ Confirmer cette photo
+                          </button>
+                        </div>
+                      </div>
+                    ) : isCameraOpen ? (
+                      // Caméra ouverte
+                      <div style={styles.cameraContainer}>
+                        <video ref={videoRef} style={styles.video} autoPlay playsInline />
+                        <div style={styles.cameraButtons}>
+                          <button 
+                            style={styles.captureBtn}
+                            onClick={capturePhoto}
+                          >
+                            📷 Prendre la photo
+                          </button>
+                          <button 
+                            style={styles.cancelPhotoBtn}
+                            onClick={() => {
+                              stopCamera();
+                              setCurrentPhotoStep('after');
+                            }}
+                          >
+                            ✕ Annuler
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      // Bouton pour ouvrir caméra
+                      <div style={styles.startPhotoSection}>
+                        <div style={styles.instructionText}>
+                          📍 Prenez une photo du travail APRÈS l'intervention
+                        </div>
                         <button 
                           style={styles.openCameraBtn}
-                          onClick={() => {
-                            setCameraMode('after');
-                            startCamera();
-                          }}
+                          onClick={() => startCamera()}
                         >
-                          📷 Ouvrir caméra
+                          📷 Ouvrir la caméra
                         </button>
-                      )}
-                    </>
-                  )}
-                </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
+              {/* FOOTER: Boutons de soumission */}
               <div style={styles.modalFooter}>
-                <button 
-                  style={styles.submitBtn}
-                  onClick={submitProof}
-                  disabled={!proofPhotos.before || !proofPhotos.after}
-                >
-                  ✅ Soumettre l'intervention
-                </button>
+                {proofPhotos.before && proofPhotos.after ? (
+                  <button 
+                    style={styles.submitBtn}
+                    onClick={submitProof}
+                  >
+                    ✅ Soumettre l'intervention
+                  </button>
+                ) : (
+                  <p style={styles.footerHint}>
+                    ⏳ En attente: {!proofPhotos.before ? 'Photo avant' : ''}{!proofPhotos.before && !proofPhotos.after ? ' et ' : ''}{!proofPhotos.after ? 'Photo après' : ''}
+                  </p>
+                )}
                 <button 
                   style={styles.cancelBtn}
                   onClick={() => setShowProofModal(false)}
@@ -544,17 +654,74 @@ const styles = {
 
   // PROOF
   proofContainer: { 
-    display: 'grid', 
-    gridTemplateColumns: '1fr 1fr', 
+    display: 'flex',
+    flexDirection: 'column',
     gap: '20px', 
     marginBottom: '20px' 
+  },
+  phaseContainer: {
+    border: '2px solid #e5e7eb',
+    borderRadius: '12px',
+    padding: '20px',
+    backgroundColor: '#fafafa'
+  },
+  phaseHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '15px',
+    paddingBottom: '12px',
+    borderBottom: '2px solid #e5e7eb'
+  },
+  phaseTitle: {
+    margin: 0,
+    fontSize: '16px',
+    fontWeight: 'bold',
+    color: '#1f2937'
+  },
+  phaseComplete: {
+    backgroundColor: '#dcfce7',
+    color: '#15803d',
+    padding: '6px 12px',
+    borderRadius: '6px',
+    fontSize: '13px',
+    fontWeight: 'bold'
+  },
+  phaseIncomplete: {
+    backgroundColor: '#fef3c7',
+    color: '#b45309',
+    padding: '6px 12px',
+    borderRadius: '6px',
+    fontSize: '13px',
+    fontWeight: 'bold'
   },
   proofSection: { 
     display: 'flex', 
     flexDirection: 'column', 
     gap: '10px' 
   },
-  proofTitle: { margin: '0 0 10px 0', fontSize: '16px', fontWeight: 'bold', color: '#1e293b' },
+  proofTitle: { 
+    margin: '0 0 10px 0', 
+    fontSize: '16px', 
+    fontWeight: 'bold', 
+    color: '#1e293b' 
+  },
+  startPhotoSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '15px',
+    alignItems: 'center',
+    padding: '30px 20px',
+    backgroundColor: '#f0f9ff',
+    borderRadius: '8px',
+    border: '2px dashed #0284c7'
+  },
+  instructionText: {
+    fontSize: '14px',
+    color: '#0369a1',
+    fontWeight: '600',
+    textAlign: 'center'
+  },
   cameraContainer: { 
     display: 'flex', 
     flexDirection: 'column', 
@@ -584,7 +751,8 @@ const styles = {
     borderRadius: '6px', 
     fontWeight: 'bold', 
     cursor: 'pointer',
-    fontSize: '14px'
+    fontSize: '14px',
+    transition: 'all 0.3s'
   },
   cancelPhotoBtn: { 
     flex: 1, 
@@ -595,7 +763,8 @@ const styles = {
     borderRadius: '6px', 
     fontWeight: 'bold', 
     cursor: 'pointer',
-    fontSize: '14px'
+    fontSize: '14px',
+    transition: 'all 0.3s'
   },
   openCameraBtn: { 
     padding: '14px', 
@@ -606,6 +775,84 @@ const styles = {
     fontWeight: 'bold', 
     cursor: 'pointer', 
     fontSize: '15px',
+    transition: 'all 0.3s'
+  },
+  previewSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '15px',
+    backgroundColor: '#f0f9ff',
+    padding: '15px',
+    borderRadius: '8px',
+    border: '2px solid #0284c7'
+  },
+  previewText: {
+    margin: 0,
+    fontSize: '14px',
+    fontWeight: '600',
+    color: '#0369a1',
+    textAlign: 'center'
+  },
+  previewActionButtons: {
+    display: 'flex',
+    gap: '10px',
+    justifyContent: 'center'
+  },
+  retakeBtn: {
+    flex: 1,
+    padding: '12px 16px',
+    backgroundColor: '#fca5a5',
+    color: '#991b1b',
+    border: 'none',
+    borderRadius: '6px',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    fontSize: '14px',
+    transition: 'all 0.3s'
+  },
+  confirmBtn: {
+    flex: 1,
+    padding: '12px 16px',
+    backgroundColor: '#86efac',
+    color: '#15803d',
+    border: 'none',
+    borderRadius: '6px',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    fontSize: '14px',
+    transition: 'all 0.3s'
+  },
+  photoConfirmSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px'
+  },
+  photoActionButtons: {
+    display: 'flex',
+    gap: '10px'
+  },
+  retakePhotoBtn: {
+    flex: 1,
+    padding: '12px 16px',
+    backgroundColor: '#fed7aa',
+    color: '#b45309',
+    border: 'none',
+    borderRadius: '6px',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    fontSize: '14px',
+    transition: 'all 0.3s'
+  },
+  confirmPhotoBtn: {
+    flex: 1,
+    padding: '12px 16px',
+    backgroundColor: '#d1d5db',
+    color: '#374151',
+    border: 'none',
+    borderRadius: '6px',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    fontSize: '14px',
     transition: 'all 0.3s'
   },
   photoPreview: { 
@@ -641,9 +888,17 @@ const styles = {
     display: 'flex', 
     gap: '10px', 
     justifyContent: 'flex-end',
+    alignItems: 'center',
     borderTop: '1px solid #e5e7eb',
     paddingTop: '20px',
     marginTop: '20px'
+  },
+  footerHint: {
+    margin: 0,
+    flex: 1,
+    fontSize: '14px',
+    color: '#b45309',
+    fontWeight: '600'
   },
   submitBtn: { 
     padding: '12px 24px', 
