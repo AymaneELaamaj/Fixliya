@@ -146,24 +146,24 @@ export default function ArtisanHome() {
   };
 
   const submitProof = async () => {
-    // Si c'est depuis "J'interviens", elle ne veut que la photo avant
-    if (currentPhotoStep === 'before' && proofPhotos.before) {
-      alert('Photo d\'intervention AVANT enregistrée! Vous pouvez maintenant intervenir.');
+    // Si c'est depuis "J'interviens", on ne fait que confirmer localement
+    if (photoMode === 'before-only' && proofPhotos.before) {
+      alert('✅ Photo d\'intervention AVANT enregistrée localement! Vous pouvez maintenant intervenir.');
       setShowProofModal(false);
       setProofPhotos({ before: null, after: null });
       return;
     }
 
-    // Si c'est depuis "Terminer", elle ne veut que la photo après
-    if (currentPhotoStep === 'after' && proofPhotos.after) {
+    // Si c'est depuis "Terminer", on envoie SEULEMENT la photo après
+    if (photoMode === 'after-only' && proofPhotos.after) {
       if (!selectedMission) return;
       try {
+        // N'envoyer que la photo APRÈS à l'étudiant, pas la photo AVANT
         await completeMission(selectedMission.id, {
-          beforePhoto: null,
           afterPhoto: proofPhotos.after.url,
           completedAt: new Date().toISOString()
         });
-        alert('Intervention terminée et notification envoyée à l\'étudiant !');
+        alert('✅ Intervention terminée! Les preuves ont été envoyées à l\'étudiant pour validation.');
         setShowProofModal(false);
         setProofPhotos({ before: null, after: null });
         if (auth.currentUser) {
@@ -171,21 +171,21 @@ export default function ArtisanHome() {
         }
       } catch (error) {
         console.error(error);
-        alert('Erreur lors de la soumission');
+        alert('❌ Erreur lors de la soumission');
       }
       return;
     }
 
-    // Si les deux photos sont prises
-    if (proofPhotos.before && proofPhotos.after) {
+    // Si les deux photos sont prises (mode 'both' - pour compatibilité future)
+    if (photoMode === 'both' && proofPhotos.before && proofPhotos.after) {
       if (!selectedMission) return;
       try {
+        // N'envoyer que la photo APRÈS à l'étudiant
         await completeMission(selectedMission.id, {
-          beforePhoto: proofPhotos.before.url,
           afterPhoto: proofPhotos.after.url,
           completedAt: new Date().toISOString()
         });
-        alert('Intervention terminée et notification envoyée à l\'étudiant !');
+        alert('✅ Intervention terminée! Les preuves ont été envoyées à l\'étudiant pour validation.');
         setShowProofModal(false);
         setProofPhotos({ before: null, after: null });
         if (auth.currentUser) {
@@ -193,7 +193,7 @@ export default function ArtisanHome() {
         }
       } catch (error) {
         console.error(error);
-        alert('Erreur lors de la soumission');
+        alert('❌ Erreur lors de la soumission');
       }
     }
   };
@@ -297,20 +297,36 @@ export default function ArtisanHome() {
                 {history.length === 0 ? (
                   <div style={styles.emptyState}>
                     <div style={styles.emptyIcon}>📭</div>
-                    <h2>Aucun ticket terminé</h2>
-                    <p>Vos interventions notées s'afficheront ici</p>
+                    <h2>Aucune intervention terminée</h2>
+                    <p>Vos interventions complétées s'afficheront ici</p>
                   </div>
                 ) : (
-                  <div style={styles.historyGrid}>
-                    {history.map(item => (
+                  <>
+                    <div style={styles.historyStatsBar}>
+                      <div style={styles.statBox}>
+                        <span style={styles.statNumber}>{history.filter(h => h.status === 'completed' && h.rating).length}</span>
+                        <span style={styles.statLabel}>Validées & Notées</span>
+                      </div>
+                      <div style={styles.statDivider}>|</div>
+                      <div style={styles.statBox}>
+                        <span style={styles.statNumber}>{history.filter(h => h.status === 'termine_artisan').length}</span>
+                        <span style={styles.statLabel}>En attente de validation</span>
+                      </div>
+                    </div>
+                    <div style={styles.historyGrid}>
+                      {history.map(item => (
                       <div key={item.id} style={styles.historyCard}>
                         {/* En-tête avec catégorie et date */}
                         <div style={styles.historyHeader}>
                           <div style={styles.historyHeaderLeft}>
                             <span style={styles.categoryTag}>{item.category}</span>
-                            <span style={styles.dateTag}>{new Date(item.validatedAt || item.createdAt).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                            <span style={styles.dateTag}>{new Date(item.validatedAt || item.completedAt || item.dateFin || item.createdAt).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
                           </div>
-                          <span style={styles.archivedBadge}>📦 Archivé</span>
+                          {item.status === 'completed' ? (
+                            <span style={styles.archivedBadge}>✅ Validée</span>
+                          ) : (
+                            <span style={styles.pendingBadge}>⏳ En attente</span>
+                          )}
                         </div>
 
                         {/* Lieu et description */}
@@ -370,6 +386,11 @@ export default function ArtisanHome() {
                               </div>
                             )}
                           </div>
+                        ) : item.status === 'termine_artisan' ? (
+                          <div style={styles.pendingValidationBox}>
+                            <span style={styles.pendingIcon}>⏳</span>
+                            <span style={styles.pendingText}>En attente de validation par le résident...</span>
+                          </div>
                         ) : (
                           <div style={styles.pendingValidationBox}>
                             <span style={styles.pendingIcon}>⏳</span>
@@ -385,7 +406,8 @@ export default function ArtisanHome() {
                         </div>
                       </div>
                     ))}
-                  </div>
+                    </div>
+                  </>
                 )}
               </div>
             )}
@@ -648,7 +670,7 @@ export default function ArtisanHome() {
 }
 
 const styles = {
-  pageContainer: { display: 'flex', minHeight: '100vh', backgroundColor: '#f8fafc' },
+  pageContainer: { display: 'flex', minHeight: '100vh', backgroundColor: '#f8fafc', margin: 0, padding: 0 },
   
   // SIDEBAR
   sidebar: { 
@@ -659,11 +681,15 @@ const styles = {
     boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
     position: 'fixed',
     height: '100vh',
-    overflowY: 'auto'
+    overflowY: 'auto',
+    display: 'flex',
+    flexDirection: 'column',
+    top: 0,
+    left: 0
   },
   sidebarHeader: { marginBottom: '30px', paddingBottom: '20px', borderBottom: '2px solid rgba(255,255,255,0.2)' },
   sidebarTitle: { margin: 0, fontSize: '24px', fontWeight: 'bold' },
-  nav: { display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '30px' },
+  nav: { display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '30px', flex: 1 },
   navButton: { 
     padding: '12px 16px', 
     backgroundColor: 'transparent', 
@@ -689,7 +715,8 @@ const styles = {
     borderRadius: '8px', 
     fontWeight: 'bold', 
     cursor: 'pointer',
-    marginTop: 'auto'
+    marginTop: 'auto',
+    transition: 'all 0.3s'
   },
 
   // MAIN CONTENT
@@ -697,10 +724,14 @@ const styles = {
     flex: 1, 
     marginLeft: '250px', 
     padding: '30px', 
-    backgroundColor: '#f8fafc'
+    backgroundColor: '#f8fafc',
+    minHeight: '100vh',
+    display: 'flex',
+    flexDirection: 'column',
+    overflowY: 'auto'
   },
-  header: { marginBottom: '30px' },
-  pageTitle: { fontSize: '32px', fontWeight: 'bold', color: '#1f2937', margin: '0 0 8px 0' },
+  header: { marginBottom: '30px', paddingBottom: '20px', borderBottom: '2px solid #e5e7eb' },
+  pageTitle: { fontSize: '32px', fontWeight: 'bold', color: '#005596', margin: '0 0 8px 0' },
   subtitle: { fontSize: '16px', color: '#6b7280', margin: 0 },
 
   section: { marginBottom: '30px' },
@@ -712,16 +743,18 @@ const styles = {
     borderRadius: '12px', 
     padding: '20px', 
     boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-    border: '1px solid #e5e7eb',
+    border: '2px solid #e5e7eb',
     transition: 'all 0.3s',
     display: 'flex',
     flexDirection: 'column',
-    gap: '12px'
+    gap: '12px',
+    borderLeftWidth: '4px',
+    borderLeftColor: '#005596'
   },
   cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' },
-  categoryTag: { backgroundColor: '#e0f2fe', color: '#0284c7', padding: '6px 12px', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold' },
+  categoryTag: { backgroundColor: '#e0f2fe', color: '#005596', padding: '6px 12px', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold' },
   urgentBadge: { backgroundColor: '#fee2e2', color: '#dc2626', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold' },
-  locationRow: { fontSize: '16px', fontWeight: '600', color: '#1f2937' },
+  locationRow: { fontSize: '16px', fontWeight: '600', color: '#005596' },
   description: { color: '#4b5563', lineHeight: '1.5', margin: 0, fontSize: '14px' },
   studentInfo: { fontSize: '13px', color: '#6b7280', marginTop: 'auto' },
   
@@ -734,14 +767,15 @@ const styles = {
   btnStart: {
     flex: 1,
     padding: '12px 16px',
-    backgroundColor: '#0284c7',
+    backgroundColor: '#005596',
     color: 'white',
     border: 'none',
     borderRadius: '8px',
     fontSize: '14px',
     fontWeight: 'bold',
     cursor: 'pointer',
-    transition: 'all 0.3s'
+    transition: 'all 0.3s',
+    boxShadow: '0 2px 6px rgba(0, 85, 150, 0.2)'
   },
   btnFinish: { 
     flex: 1,
@@ -754,7 +788,8 @@ const styles = {
     fontWeight: 'bold', 
     cursor: 'pointer',
     transition: 'all 0.3s',
-    marginTop: 0
+    marginTop: 0,
+    boxShadow: '0 2px 6px rgba(22, 163, 74, 0.2)'
   },
 
   // HISTORY CARDS
@@ -764,7 +799,7 @@ const styles = {
     borderRadius: '12px', 
     padding: '20px', 
     boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-    border: '1px solid #e5e7eb',
+    border: '2px solid #e5e7eb',
     borderLeftWidth: '5px',
     borderLeftColor: '#16a34a',
     display: 'flex',
@@ -777,7 +812,7 @@ const styles = {
     justifyContent: 'space-between', 
     alignItems: 'center',
     paddingBottom: '12px',
-    borderBottom: '1px solid #e5e7eb'
+    borderBottom: '2px solid #e5e7eb'
   },
   historyHeaderLeft: {
     display: 'flex',
@@ -785,11 +820,54 @@ const styles = {
     alignItems: 'center'
   },
   archivedBadge: {
-    backgroundColor: '#d1d5db',
-    color: '#4b5563',
+    backgroundColor: '#d1fae5',
+    color: '#059669',
     padding: '6px 12px',
     borderRadius: '6px',
     fontSize: '12px',
+    fontWeight: 'bold'
+  },
+  pendingBadge: {
+    backgroundColor: '#fef3c7',
+    color: '#b45309',
+    padding: '6px 12px',
+    borderRadius: '6px',
+    fontSize: '12px',
+    fontWeight: 'bold'
+  },
+  historyStatsBar: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: '20px',
+    marginBottom: '20px',
+    padding: '15px',
+    backgroundColor: '#f0f9ff',
+    borderRadius: '8px',
+    border: '2px solid #005596',
+    boxShadow: '0 2px 6px rgba(0, 85, 150, 0.1)'
+  },
+  statBox: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '6px'
+  },
+  statNumber: {
+    fontSize: '24px',
+    fontWeight: 'bold',
+    color: '#005596'
+  },
+  statLabel: {
+    fontSize: '12px',
+    color: '#0369a1',
+    fontWeight: '600',
+    textAlign: 'center',
+    maxWidth: '120px'
+  },
+  statDivider: {
+    color: '#005596',
+    fontSize: '20px',
     fontWeight: 'bold'
   },
   historyDetails: {
@@ -800,11 +878,13 @@ const styles = {
   detailRow: {
     display: 'flex',
     gap: '10px',
-    alignItems: 'flex-start'
+    alignItems: 'flex-start',
+    padding: '8px 0'
   },
   detailIcon: {
     fontSize: '16px',
-    minWidth: '20px'
+    minWidth: '20px',
+    color: '#005596'
   },
   detailText: {
     fontSize: '14px',
@@ -815,7 +895,7 @@ const styles = {
     backgroundColor: '#f9fafb',
     padding: '12px',
     borderRadius: '8px',
-    borderLeft: '3px solid #0284c7'
+    borderLeft: '3px solid #005596'
   },
   descriptionText: {
     margin: 0,
@@ -825,7 +905,7 @@ const styles = {
   },
   photoArchiveSection: {
     backgroundColor: '#f0f9ff',
-    border: '1px solid #bae6fd',
+    border: '2px solid #005596',
     borderRadius: '8px',
     padding: '12px'
   },
@@ -833,7 +913,7 @@ const styles = {
     margin: '0 0 10px 0',
     fontSize: '13px',
     fontWeight: 'bold',
-    color: '#0369a1'
+    color: '#005596'
   },
   photoGrid: {
     display: 'grid',
@@ -927,7 +1007,7 @@ const styles = {
     alignItems: 'center',
     gap: '10px',
     backgroundColor: '#fef3c7',
-    border: '1px solid #fcd34d',
+    border: '2px solid #fcd34d',
     borderRadius: '8px',
     padding: '12px',
     justifyContent: 'center'
@@ -942,22 +1022,24 @@ const styles = {
   },
   timestampBox: {
     backgroundColor: '#e0f2fe',
-    border: '1px solid #bae6fd',
+    border: '2px solid #005596',
     borderRadius: '6px',
-    padding: '10px',
+    padding: '12px',
     textAlign: 'center'
   },
   timestampText: {
     fontSize: '12px',
-    color: '#0369a1',
-    fontWeight: '500'
+    color: '#005596',
+    fontWeight: '600'
   },
   dateTag: { 
     fontSize: '12px', 
-    color: '#6b7280', 
-    backgroundColor: '#f3f4f6', 
+    color: '#005596', 
+    backgroundColor: '#e0f2fe', 
     padding: '4px 10px', 
-    borderRadius: '4px' 
+    borderRadius: '4px',
+    fontWeight: '600',
+    border: '1px solid #005596'
   },
 
   // EMPTY STATE
@@ -1108,14 +1190,15 @@ const styles = {
     flex: 1,
     maxWidth: '300px',
     padding: '14px 20px', 
-    backgroundColor: '#2563eb', 
+    backgroundColor: '#005596', 
     color: 'white', 
     border: 'none', 
     borderRadius: '6px', 
     fontWeight: 'bold', 
     cursor: 'pointer',
     fontSize: '15px',
-    transition: 'all 0.3s'
+    transition: 'all 0.3s',
+    boxShadow: '0 2px 6px rgba(0, 85, 150, 0.2)'
   },
   cancelPhotoBtn: { 
     flex: 1,
@@ -1128,7 +1211,8 @@ const styles = {
     fontWeight: 'bold', 
     cursor: 'pointer',
     fontSize: '15px',
-    transition: 'all 0.3s'
+    transition: 'all 0.3s',
+    boxShadow: '0 2px 6px rgba(239, 68, 68, 0.2)'
   },
   openCameraBtn: { 
     padding: '14px', 
@@ -1139,7 +1223,8 @@ const styles = {
     fontWeight: 'bold', 
     cursor: 'pointer', 
     fontSize: '15px',
-    transition: 'all 0.3s'
+    transition: 'all 0.3s',
+    boxShadow: '0 2px 6px rgba(0, 85, 150, 0.2)'
   },
   previewSection: {
     display: 'flex',
@@ -1148,13 +1233,13 @@ const styles = {
     backgroundColor: '#f0f9ff',
     padding: '15px',
     borderRadius: '8px',
-    border: '2px solid #0284c7'
+    border: '2px solid #005596'
   },
   previewText: {
     margin: 0,
     fontSize: '14px',
     fontWeight: '600',
-    color: '#0369a1',
+    color: '#005596',
     textAlign: 'center'
   },
   previewActionButtons: {
@@ -1172,7 +1257,8 @@ const styles = {
     fontWeight: 'bold',
     cursor: 'pointer',
     fontSize: '14px',
-    transition: 'all 0.3s'
+    transition: 'all 0.3s',
+    boxShadow: '0 2px 4px rgba(220, 38, 38, 0.2)'
   },
   confirmBtn: {
     flex: 1,
@@ -1184,7 +1270,8 @@ const styles = {
     fontWeight: 'bold',
     cursor: 'pointer',
     fontSize: '14px',
-    transition: 'all 0.3s'
+    transition: 'all 0.3s',
+    boxShadow: '0 2px 4px rgba(22, 163, 74, 0.2)'
   },
   photoConfirmSection: {
     display: 'flex',
@@ -1253,7 +1340,7 @@ const styles = {
     gap: '10px', 
     justifyContent: 'flex-end',
     alignItems: 'center',
-    borderTop: '1px solid #e5e7eb',
+    borderTop: '2px solid #e5e7eb',
     paddingTop: '20px',
     marginTop: '20px'
   },
@@ -1273,12 +1360,13 @@ const styles = {
     fontWeight: 'bold', 
     cursor: 'pointer', 
     fontSize: '14px',
-    transition: 'all 0.3s'
+    transition: 'all 0.3s',
+    boxShadow: '0 2px 6px rgba(22, 163, 74, 0.2)'
   },
   cancelBtn: { 
     padding: '12px 24px', 
     backgroundColor: '#e5e7eb', 
-    color: '#333', 
+    color: '#374151', 
     border: 'none', 
     borderRadius: '6px', 
     fontWeight: 'bold', 

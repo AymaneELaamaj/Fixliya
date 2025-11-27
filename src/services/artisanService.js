@@ -37,11 +37,12 @@ export const completeMission = async (ticketId, proofData) => {
     // Récupérer les détails du ticket pour obtenir l'email de l'étudiant
     const ticketSnap = await getDocs(query(collection(db, "tickets"), where("__name__", "==", ticketId)));
     
+    // N'envoyer que la photo APRÈS (pas la photo AVANT)
+    // La photo AVANT reste locale chez l'artisan
     await updateDoc(ticketRef, {
       status: "termine_artisan",
       dateFin: new Date().toISOString(),
-      beforePhoto: proofData.beforePhoto,
-      afterPhoto: proofData.afterPhoto,
+      afterPhoto: proofData.afterPhoto,  // Seulement la photo APRÈS
       completedAt: proofData.completedAt
     });
 
@@ -55,18 +56,39 @@ export const completeMission = async (ticketId, proofData) => {
 };
 
 /**
- * Récupérer l'historique (Tickets validés avec notes)
+ * Récupérer l'historique (Tickets terminés: en attente de validation OU déjà validés avec notes)
  */
 export const getArtisanHistory = async (artisanId) => {
   try {
-    const q = query(
+    // Récupérer les tickets terminés par l'artisan (en attente de validation)
+    const q1 = query(
+      collection(db, "tickets"), 
+      where("assignedToId", "==", artisanId),
+      where("status", "==", "termine_artisan")
+    );
+
+    // Récupérer aussi les tickets validés et notés par l'étudiant
+    const q2 = query(
       collection(db, "tickets"), 
       where("assignedToId", "==", artisanId),
       where("status", "==", "completed")
     );
 
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const snapshot1 = await getDocs(q1);
+    const snapshot2 = await getDocs(q2);
+    
+    // Combiner les deux listes et les trier par date décroissante
+    const allHistories = [
+      ...snapshot1.docs.map(doc => ({ id: doc.id, ...doc.data() })),
+      ...snapshot2.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+    ];
+    
+    // Trier par date complétée (plus récente en premier)
+    return allHistories.sort((a, b) => {
+      const dateA = new Date(a.completedAt || a.dateFin || 0);
+      const dateB = new Date(b.completedAt || b.dateFin || 0);
+      return dateB - dateA;
+    });
   } catch (error) {
     console.error("Erreur Historique:", error);
     return [];
