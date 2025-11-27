@@ -13,6 +13,7 @@ export default function ArtisanHome() {
   const [showProofModal, setShowProofModal] = useState(false);
   const [proofPhotos, setProofPhotos] = useState({ before: null, after: null });
   const [currentPhotoStep, setCurrentPhotoStep] = useState('before'); // 'before' ou 'after'
+  const [photoMode, setPhotoMode] = useState('before-only'); // 'before-only', 'after-only', ou 'both'
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState(null); // Aperçu avant de confirmer
   const videoRef = useRef(null);
@@ -46,14 +47,21 @@ export default function ArtisanHome() {
 
   const startCamera = async () => {
     try {
+      setIsCameraOpen(true); // Ouvrir le rendu d'abord
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setIsCameraOpen(true);
-      }
+      
+      // Attendre que le DOM soit mis à jour
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          // Force le démarrage de la vidéo
+          videoRef.current.play().catch(err => console.warn('Erreur play:', err));
+        }
+      }, 100);
     } catch (err) {
       console.error('Erreur caméra:', err);
-      alert('Impossible d\'accéder à la caméra');
+      setIsCameraOpen(false);
+      alert('Impossible d\'accéder à la caméra. Vérifiez les permissions.');
     }
   };
 
@@ -96,9 +104,13 @@ export default function ArtisanHome() {
 
   const stopCamera = () => {
     if (videoRef.current && videoRef.current.srcObject) {
-      videoRef.current.srcObject.getTracks().forEach(track => track.stop());
-      setIsCameraOpen(false);
+      const tracks = videoRef.current.srcObject.getTracks();
+      tracks.forEach(track => {
+        track.stop();
+      });
+      videoRef.current.srcObject = null;
     }
+    setIsCameraOpen(false);
   };
 
   const deletePhoto = (type) => {
@@ -112,40 +124,77 @@ export default function ArtisanHome() {
     }
   };
 
-  const openProofModal = (mission) => {
+  const startInterventionPhotoOnly = (mission) => {
     setSelectedMission(mission);
     setShowProofModal(true);
     setProofPhotos({ before: null, after: null });
     setCurrentPhotoStep('before');
+    setPhotoMode('before-only'); // Mode: seulement la photo AVANT
+    setPreviewPhoto(null);
+    setIsCameraOpen(false);
+  };
+
+  // Ouvrir modal pour photo APRÈS (Terminer)
+  const completeInterventionPhotoOnly = (mission) => {
+    setSelectedMission(mission);
+    setShowProofModal(true);
+    setProofPhotos({ before: null, after: null });
+    setCurrentPhotoStep('after');
+    setPhotoMode('after-only'); // Mode: seulement la photo APRÈS
     setPreviewPhoto(null);
     setIsCameraOpen(false);
   };
 
   const submitProof = async () => {
-    if (!proofPhotos.before || !proofPhotos.after) {
-      alert('Vous devez fournir les deux photos (avant et après)');
+    // Si c'est depuis "J'interviens", elle ne veut que la photo avant
+    if (currentPhotoStep === 'before' && proofPhotos.before) {
+      alert('Photo d\'intervention AVANT enregistrée! Vous pouvez maintenant intervenir.');
+      setShowProofModal(false);
+      setProofPhotos({ before: null, after: null });
       return;
     }
 
-    if (!selectedMission) return;
-
-    try {
-      await completeMission(selectedMission.id, {
-        beforePhoto: proofPhotos.before.url,
-        afterPhoto: proofPhotos.after.url,
-        completedAt: new Date().toISOString()
-      });
-
-      alert('Intervention terminée et notification envoyée à l\'étudiant !');
-      setShowProofModal(false);
-      setProofPhotos({ before: null, after: null });
-      
-      if (auth.currentUser) {
-        loadData(auth.currentUser.uid);
+    // Si c'est depuis "Terminer", elle ne veut que la photo après
+    if (currentPhotoStep === 'after' && proofPhotos.after) {
+      if (!selectedMission) return;
+      try {
+        await completeMission(selectedMission.id, {
+          beforePhoto: null,
+          afterPhoto: proofPhotos.after.url,
+          completedAt: new Date().toISOString()
+        });
+        alert('Intervention terminée et notification envoyée à l\'étudiant !');
+        setShowProofModal(false);
+        setProofPhotos({ before: null, after: null });
+        if (auth.currentUser) {
+          loadData(auth.currentUser.uid);
+        }
+      } catch (error) {
+        console.error(error);
+        alert('Erreur lors de la soumission');
       }
-    } catch (error) {
-      console.error(error);
-      alert('Erreur lors de la soumission');
+      return;
+    }
+
+    // Si les deux photos sont prises
+    if (proofPhotos.before && proofPhotos.after) {
+      if (!selectedMission) return;
+      try {
+        await completeMission(selectedMission.id, {
+          beforePhoto: proofPhotos.before.url,
+          afterPhoto: proofPhotos.after.url,
+          completedAt: new Date().toISOString()
+        });
+        alert('Intervention terminée et notification envoyée à l\'étudiant !');
+        setShowProofModal(false);
+        setProofPhotos({ before: null, after: null });
+        if (auth.currentUser) {
+          loadData(auth.currentUser.uid);
+        }
+      } catch (error) {
+        console.error(error);
+        alert('Erreur lors de la soumission');
+      }
     }
   };
 
@@ -221,12 +270,21 @@ export default function ArtisanHome() {
                         <div style={styles.locationRow}>📍 {mission.location}</div>
                         <p style={styles.description}>{mission.description}</p>
                         <div style={styles.studentInfo}>👤 {mission.studentName}</div>
-                        <button 
-                          onClick={() => openProofModal(mission)} 
-                          style={styles.btnFinish}
-                        >
-                          ✅ Terminer l'intervention
-                        </button>
+                        {/* Deux boutons: J'interviens et Terminer */}
+                        <div style={styles.buttonGroup}>
+                          <button 
+                            onClick={() => startInterventionPhotoOnly(mission)} 
+                            style={styles.btnStart}
+                          >
+                            ▶️ J'interviens
+                          </button>
+                          <button 
+                            onClick={() => completeInterventionPhotoOnly(mission)} 
+                            style={styles.btnFinish}
+                          >
+                            ✅ Terminer l'intervention
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -285,8 +343,9 @@ export default function ArtisanHome() {
               </div>
 
               <div style={styles.proofContainer}>
-                {/* PHASE 1: PHOTO AVANT */}
-                <div style={styles.phaseContainer}>
+                {/* PHASE 1: PHOTO AVANT - Affichée SEULEMENT si mode 'before-only' ou 'both' */}
+                {(photoMode === 'before-only' || photoMode === 'both') && (
+                  <div style={styles.phaseContainer}>
                   <div style={styles.phaseHeader}>
                     <h3 style={styles.phaseTitle}>📷 ÉTAPE 1 : Photo AVANT l'intervention</h3>
                     <span style={proofPhotos.before ? styles.phaseComplete : styles.phaseIncomplete}>
@@ -305,12 +364,15 @@ export default function ArtisanHome() {
                         >
                           🔄 Reprendre cette photo
                         </button>
-                        <button 
-                          style={styles.confirmPhotoBtn}
-                          onClick={() => setCurrentPhotoStep('after')}
-                        >
-                          ✅ Valider et continuer
-                        </button>
+                        {/* Bouton pour continuer SEULEMENT si mode 'both' */}
+                        {photoMode === 'both' ? (
+                          <button 
+                            style={styles.confirmPhotoBtn}
+                            onClick={() => setCurrentPhotoStep('after')}
+                          >
+                            ✅ Valider et continuer
+                          </button>
+                        ) : null}
                       </div>
                     </div>
                   ) : previewPhoto && previewPhoto.step === 'before' ? (
@@ -370,9 +432,10 @@ export default function ArtisanHome() {
                     </div>
                   )}
                 </div>
+                )}
 
-                {/* PHASE 2: PHOTO APRÈS */}
-                {currentPhotoStep === 'after' && (
+                {/* PHASE 2: PHOTO APRÈS - Affichée SEULEMENT si mode 'after-only' ou 'both' ET on est à l'étape 'after' */}
+                {(photoMode === 'after-only' || (photoMode === 'both' && currentPhotoStep === 'after')) && (
                   <div style={styles.phaseContainer}>
                     <div style={styles.phaseHeader}>
                       <h3 style={styles.phaseTitle}>📷 ÉTAPE 2 : Photo APRÈS l'intervention</h3>
@@ -462,23 +525,52 @@ export default function ArtisanHome() {
 
               {/* FOOTER: Boutons de soumission */}
               <div style={styles.modalFooter}>
-                {proofPhotos.before && proofPhotos.after ? (
+                {/* Si on est en ÉTAPE 1 (photo avant) en mode 'before-only' */}
+                {photoMode === 'before-only' && currentPhotoStep === 'before' && proofPhotos.before ? (
+                  <button 
+                    style={styles.submitBtn}
+                    onClick={submitProof}
+                  >
+                    ✅ Valider et commencer l'intervention
+                  </button>
+                ) : null}
+
+                {/* Si on est en ÉTAPE 2 (photo après) en mode 'after-only' */}
+                {photoMode === 'after-only' && currentPhotoStep === 'after' && proofPhotos.after ? (
+                  <button 
+                    style={styles.submitBtn}
+                    onClick={submitProof}
+                  >
+                    ✅ Terminer et envoyer les preuves
+                  </button>
+                ) : null}
+
+                {/* Si on est en mode 'both' et les deux photos sont prises */}
+                {photoMode === 'both' && proofPhotos.before && proofPhotos.after ? (
                   <button 
                     style={styles.submitBtn}
                     onClick={submitProof}
                   >
                     ✅ Soumettre l'intervention
                   </button>
-                ) : (
+                ) : null}
+
+                {/* Message d'attente */}
+                {!(
+                  (photoMode === 'before-only' && proofPhotos.before) ||
+                  (photoMode === 'after-only' && proofPhotos.after) ||
+                  (photoMode === 'both' && proofPhotos.before && proofPhotos.after)
+                ) ? (
                   <p style={styles.footerHint}>
-                    ⏳ En attente: {!proofPhotos.before ? 'Photo avant' : ''}{!proofPhotos.before && !proofPhotos.after ? ' et ' : ''}{!proofPhotos.after ? 'Photo après' : ''}
+                    ⏳ Prenez la photo pour continuer...
                   </p>
-                )}
+                ) : null}
+
                 <button 
                   style={styles.cancelBtn}
                   onClick={() => setShowProofModal(false)}
                 >
-                  ✕ Annuler
+                  ✕ Fermer
                 </button>
               </div>
             </div>
@@ -568,18 +660,37 @@ const styles = {
   locationRow: { fontSize: '16px', fontWeight: '600', color: '#1f2937' },
   description: { color: '#4b5563', lineHeight: '1.5', margin: 0, fontSize: '14px' },
   studentInfo: { fontSize: '13px', color: '#6b7280', marginTop: 'auto' },
+  
+  // Groupe de boutons
+  buttonGroup: {
+    display: 'flex',
+    gap: '10px',
+    marginTop: '12px'
+  },
+  btnStart: {
+    flex: 1,
+    padding: '12px 16px',
+    backgroundColor: '#0284c7',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '14px',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    transition: 'all 0.3s'
+  },
   btnFinish: { 
-    width: '100%', 
-    padding: '14px', 
+    flex: 1,
+    padding: '12px 16px', 
     backgroundColor: '#16a34a', 
     color: 'white', 
     border: 'none', 
     borderRadius: '8px', 
-    fontSize: '15px', 
+    fontSize: '14px', 
     fontWeight: 'bold', 
     cursor: 'pointer',
     transition: 'all 0.3s',
-    marginTop: '12px'
+    marginTop: 0
   },
 
   // HISTORY CARDS
@@ -632,7 +743,8 @@ const styles = {
     width: '90%', 
     maxHeight: '90vh', 
     overflowY: 'auto', 
-    boxShadow: '0 4px 20px rgba(0,0,0,0.2)' 
+    boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+    animation: 'slideUp 0.3s ease-out'
   },
   modalHeader: { 
     display: 'flex', 
@@ -725,45 +837,49 @@ const styles = {
   cameraContainer: { 
     display: 'flex', 
     flexDirection: 'column', 
-    gap: '10px', 
-    backgroundColor: '#f3f4f6', 
+    gap: '12px', 
+    backgroundColor: '#000', 
     borderRadius: '8px', 
-    padding: '10px',
-    border: '2px solid #e5e7eb'
+    padding: '12px',
+    border: '2px solid #1f2937'
   },
   video: { 
     width: '100%', 
-    height: '300px', 
+    height: '400px', 
     backgroundColor: '#000', 
-    borderRadius: '8px', 
-    objectFit: 'cover' 
+    borderRadius: '6px', 
+    objectFit: 'cover',
+    display: 'block'
   },
   cameraButtons: { 
     display: 'flex', 
-    gap: '8px' 
+    gap: '10px',
+    justifyContent: 'center'
   },
   captureBtn: { 
-    flex: 1, 
-    padding: '12px', 
+    flex: 1,
+    maxWidth: '300px',
+    padding: '14px 20px', 
     backgroundColor: '#2563eb', 
     color: 'white', 
     border: 'none', 
     borderRadius: '6px', 
     fontWeight: 'bold', 
     cursor: 'pointer',
-    fontSize: '14px',
+    fontSize: '15px',
     transition: 'all 0.3s'
   },
   cancelPhotoBtn: { 
-    flex: 1, 
-    padding: '12px', 
+    flex: 1,
+    maxWidth: '300px',
+    padding: '14px 20px', 
     backgroundColor: '#ef4444', 
     color: 'white', 
     border: 'none', 
     borderRadius: '6px', 
     fontWeight: 'bold', 
     cursor: 'pointer',
-    fontSize: '14px',
+    fontSize: '15px',
     transition: 'all 0.3s'
   },
   openCameraBtn: { 
