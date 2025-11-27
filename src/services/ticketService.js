@@ -89,26 +89,53 @@ export const rejectTicket = async (ticketId, reason) => {
  */
 export const createTicket = async (ticketData) => {
   try {
+    // Construire l'objet ticket en excluant les valeurs undefined
     const newTicket = {
       studentId: ticketData.studentId, 
       studentName: ticketData.studentName,
       location: ticketData.location, 
       category: ticketData.category,
       description: ticketData.description,
-      locationType: ticketData.locationType,
-      building: ticketData.building,
-      roomNumber: ticketData.roomNumber,
-      commonAreaName: ticketData.commonAreaName,
-      imageUrl: ticketData.imageUrl || "https://placehold.co/600x400?text=Image+Non+Disponible",
-      audioUrl: ticketData.audioUrl || null,
       isUrgent: ticketData.isUrgent,
-      ticketType: ticketData.ticketType || "urgent", // "urgent" ou "planifier"
-      scheduledDate: ticketData.scheduledDate || null,
-      scheduledTime: ticketData.scheduledTime || null,
-      scheduledDateTime: ticketData.scheduledDateTime || null,
       status: "pending",
       createdAt: new Date().toISOString()
     };
+
+    // Ajouter locationType et champs conditionnels
+    if (ticketData.locationType) {
+      newTicket.locationType = ticketData.locationType;
+    }
+    if (ticketData.building) {
+      newTicket.building = ticketData.building;
+    }
+    if (ticketData.roomNumber) {
+      newTicket.roomNumber = ticketData.roomNumber;
+    }
+    if (ticketData.commonAreaName) {
+      newTicket.commonAreaName = ticketData.commonAreaName;
+    }
+
+    // Ajouter les champs d'image et audio s'ils existent
+    if (ticketData.imageUrl) {
+      newTicket.imageUrl = ticketData.imageUrl;
+    }
+    if (ticketData.audioUrl) {
+      newTicket.audioUrl = ticketData.audioUrl;
+    }
+
+    // Ajouter les champs de planification s'ils existent
+    if (ticketData.ticketType) {
+      newTicket.ticketType = ticketData.ticketType;
+    }
+    if (ticketData.scheduledDate) {
+      newTicket.scheduledDate = ticketData.scheduledDate;
+    }
+    if (ticketData.scheduledTime) {
+      newTicket.scheduledTime = ticketData.scheduledTime;
+    }
+    if (ticketData.scheduledDateTime) {
+      newTicket.scheduledDateTime = ticketData.scheduledDateTime;
+    }
 
     await addDoc(collection(db, "tickets"), newTicket);
     return true;

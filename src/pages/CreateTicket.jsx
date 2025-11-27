@@ -163,8 +163,12 @@ export default function CreateTicket() {
         location: location,
         category,
         description,
+        locationType: locationType,
+        building: locationType === "batiment" ? building : null,
+        roomNumber: locationType === "batiment" ? roomNumber : null,
+        commonAreaName: locationType === "commun" ? commonAreaName : null,
         isUrgent: ticketType === "urgent",
-        ticketType: ticketType, // "urgent" ou "planifier"
+        ticketType: ticketType,
         scheduledDate: ticketType === "planifier" ? scheduledDate : null,
         scheduledTime: ticketType === "planifier" ? scheduledTime : null,
         scheduledDateTime: ticketType === "planifier" ? `${scheduledDate} ${scheduledTime}` : null
