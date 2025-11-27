@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { getAllTickets, getArtisans, assignTicket, updateArtisan, deleteArtisan, getStatistics, getStudents, toggleStudentStatus, getExternalProviders, externalizeTicket } from '../services/adminService';
+import { getAllTickets, getArtisans, assignTicket, updateArtisan, deleteArtisan, getStatistics, getStudents, toggleStudentStatus, getExternalProviders, externalizeTicket, createArtisanAccount } from '../services/adminService';
 import { logoutUser } from '../services/authService';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -11,6 +11,15 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [editingArtisanId, setEditingArtisanId] = useState(null);
   const [editFormData, setEditFormData] = useState({});
+  const [showAddArtisanForm, setShowAddArtisanForm] = useState(false);
+  const [newArtisanData, setNewArtisanData] = useState({
+    prenom: '',
+    nom: '',
+    email: '',
+    telephone: '',
+    specialite: '',
+    password: ''
+  });
   const [activeTab, setActiveTab] = useState("tickets");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
@@ -81,6 +90,33 @@ export default function AdminDashboard() {
         console.error(err);
         alert("Erreur lors de la suppression");
       }
+    }
+  };
+
+  const handleAddArtisan = async () => {
+    if (!newArtisanData.prenom || !newArtisanData.nom || !newArtisanData.email || !newArtisanData.specialite || !newArtisanData.password) {
+      alert("Veuillez remplir tous les champs obligatoires");
+      return;
+    }
+
+    try {
+      await createArtisanAccount(newArtisanData);
+      alert("Artisan créé avec succès !");
+      setNewArtisanData({
+        prenom: '',
+        nom: '',
+        email: '',
+        telephone: '',
+        specialite: '',
+        password: ''
+      });
+      setShowAddArtisanForm(false);
+      // Recharger la liste des artisans
+      const updatedArtisans = await getArtisans();
+      setArtisans(updatedArtisans);
+    } catch (err) {
+      console.error(err);
+      alert("Erreur lors de la création de l'artisan: " + err.message);
     }
   };
 
@@ -238,7 +274,12 @@ export default function AdminDashboard() {
              "👨‍🎓 Gestion des Étudiants"}
           </h1>
           {activeTab === "artisans" && (
-            <Link to="/admin/create-artisan" style={styles.addBtn}>+ Ajouter Artisan</Link>
+            <button 
+              onClick={() => setShowAddArtisanForm(!showAddArtisanForm)}
+              style={styles.addBtn}
+            >
+              {showAddArtisanForm ? '✕ Annuler' : '+ Ajouter Artisan'}
+            </button>
           )}
         </header>
 
@@ -381,6 +422,59 @@ export default function AdminDashboard() {
 
         {activeTab === "artisans" && (
           <div style={styles.section}>
+            {showAddArtisanForm && (
+              <div style={styles.addArtisanFormContainer}>
+                <h2 style={styles.formTitle}>✨ Ajouter un Nouveau Artisan</h2>
+                <div style={styles.formGrid}>
+                  <input
+                    type="text"
+                    placeholder="Prénom *"
+                    value={newArtisanData.prenom}
+                    onChange={(e) => setNewArtisanData({...newArtisanData, prenom: e.target.value})}
+                    style={styles.input}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Nom *"
+                    value={newArtisanData.nom}
+                    onChange={(e) => setNewArtisanData({...newArtisanData, nom: e.target.value})}
+                    style={styles.input}
+                  />
+                  <input
+                    type="email"
+                    placeholder="Email *"
+                    value={newArtisanData.email}
+                    onChange={(e) => setNewArtisanData({...newArtisanData, email: e.target.value})}
+                    style={styles.input}
+                  />
+                  <input
+                    type="tel"
+                    placeholder="Téléphone"
+                    value={newArtisanData.telephone}
+                    onChange={(e) => setNewArtisanData({...newArtisanData, telephone: e.target.value})}
+                    style={styles.input}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Spécialité *"
+                    value={newArtisanData.specialite}
+                    onChange={(e) => setNewArtisanData({...newArtisanData, specialite: e.target.value})}
+                    style={styles.input}
+                  />
+                  <input
+                    type="password"
+                    placeholder="Mot de passe *"
+                    value={newArtisanData.password}
+                    onChange={(e) => setNewArtisanData({...newArtisanData, password: e.target.value})}
+                    style={styles.input}
+                  />
+                </div>
+                <div style={styles.formButtonGroup}>
+                  <button onClick={handleAddArtisan} style={styles.submitBtn}>✓ Créer Artisan</button>
+                  <button onClick={() => setShowAddArtisanForm(false)} style={styles.cancelBtn}>✕ Annuler</button>
+                </div>
+              </div>
+            )}
             <div style={styles.artisansGrid}>
               {artisans.map(artisan => (
                 <div key={artisan.id} style={styles.artisanCard}>
@@ -1525,5 +1619,40 @@ const styles = {
     transition: 'all 0.3s ease',
     marginLeft: '12px',
     whiteSpace: 'nowrap'
+  },
+  addArtisanFormContainer: {
+    backgroundColor: '#f0f9ff',
+    border: '2px solid #0284c7',
+    borderRadius: '8px',
+    padding: '20px',
+    marginBottom: '25px'
+  },
+  formTitle: {
+    margin: '0 0 20px 0',
+    fontSize: '18px',
+    fontWeight: 'bold',
+    color: '#005596'
+  },
+  formGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+    gap: '12px',
+    marginBottom: '15px'
+  },
+  formButtonGroup: {
+    display: 'flex',
+    gap: '10px',
+    justifyContent: 'flex-end'
+  },
+  submitBtn: {
+    backgroundColor: '#10b981',
+    color: 'white',
+    border: 'none',
+    padding: '12px 20px',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: 'bold',
+    transition: 'all 0.3s ease'
   }
 };

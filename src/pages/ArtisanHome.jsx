@@ -304,21 +304,85 @@ export default function ArtisanHome() {
                   <div style={styles.historyGrid}>
                     {history.map(item => (
                       <div key={item.id} style={styles.historyCard}>
+                        {/* En-tête avec catégorie et date */}
                         <div style={styles.historyHeader}>
-                          <span style={styles.categoryTag}>{item.category}</span>
-                          <span style={styles.dateTag}>{new Date(item.validatedAt).toLocaleDateString('fr-FR')}</span>
+                          <div style={styles.historyHeaderLeft}>
+                            <span style={styles.categoryTag}>{item.category}</span>
+                            <span style={styles.dateTag}>{new Date(item.validatedAt || item.createdAt).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                          </div>
+                          <span style={styles.archivedBadge}>📦 Archivé</span>
                         </div>
-                        <div style={styles.ratingBox}>
-                          <span style={styles.ratingLabel}>Note reçue :</span>
-                          <span style={styles.ratingValue}>{item.rating}/5 ⭐</span>
+
+                        {/* Lieu et description */}
+                        <div style={styles.historyDetails}>
+                          <div style={styles.detailRow}>
+                            <span style={styles.detailIcon}>📍</span>
+                            <span style={styles.detailText}>{item.location || 'Lieu non spécifié'}</span>
+                          </div>
+                          <div style={styles.detailRow}>
+                            <span style={styles.detailIcon}>👤</span>
+                            <span style={styles.detailText}>{item.studentName || 'Étudiant'}</span>
+                          </div>
+                          <div style={styles.descriptionBox}>
+                            <p style={styles.descriptionText}>{item.description}</p>
+                          </div>
                         </div>
-                        {item.studentComment ? (
-                          <div style={styles.commentBox}>
-                            💬 "{item.studentComment}"
+
+                        {/* Photos archivées */}
+                        {(item.beforePhoto || item.afterPhoto) && (
+                          <div style={styles.photoArchiveSection}>
+                            <h4 style={styles.photoArchiveTitle}>📸 Photos de l'intervention</h4>
+                            <div style={styles.photoGrid}>
+                              {item.beforePhoto && (
+                                <div style={styles.photoCard}>
+                                  <div style={styles.photoLabel}>AVANT</div>
+                                  <img src={item.beforePhoto} style={styles.archivePhoto} alt="Photo avant" />
+                                </div>
+                              )}
+                              {item.afterPhoto && (
+                                <div style={styles.photoCard}>
+                                  <div style={styles.photoLabel}>APRÈS</div>
+                                  <img src={item.afterPhoto} style={styles.archivePhoto} alt="Photo après" />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Section notation - affichée seulement si validée */}
+                        {item.status === 'completed' && item.rating ? (
+                          <div style={styles.ratingSection}>
+                            <div style={styles.ratingBox}>
+                              <span style={styles.ratingLabel}>Note du résident :</span>
+                              <div style={styles.ratingStars}>
+                                {[...Array(5)].map((_, i) => (
+                                  <span key={i} style={{ color: i < item.rating ? '#fbbf24' : '#e5e7eb', fontSize: '20px' }}>
+                                    ⭐
+                                  </span>
+                                ))}
+                              </div>
+                              <span style={styles.ratingValue}>{item.rating}/5</span>
+                            </div>
+                            {item.studentComment && (
+                              <div style={styles.commentBox}>
+                                <div style={styles.commentLabel}>💬 Commentaire :</div>
+                                <p style={styles.commentText}>"{item.studentComment}"</p>
+                              </div>
+                            )}
                           </div>
                         ) : (
-                          <p style={styles.noComment}>Aucun commentaire laissé</p>
+                          <div style={styles.pendingValidationBox}>
+                            <span style={styles.pendingIcon}>⏳</span>
+                            <span style={styles.pendingText}>En attente de validation par le résident...</span>
+                          </div>
                         )}
+
+                        {/* Timestamp */}
+                        <div style={styles.timestampBox}>
+                          <span style={styles.timestampText}>
+                            ✓ Complétée le {new Date(item.completedAt || item.dateFin || item.validatedAt).toLocaleDateString('fr-FR')} à {new Date(item.completedAt || item.dateFin || item.validatedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -694,23 +758,207 @@ const styles = {
   },
 
   // HISTORY CARDS
-  historyGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' },
+  historyGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '20px' },
   historyCard: { 
     backgroundColor: 'white', 
     borderRadius: '12px', 
     padding: '20px', 
     boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-    borderLeft: '5px solid #16a34a',
     border: '1px solid #e5e7eb',
-    borderLeftWidth: '5px'
+    borderLeftWidth: '5px',
+    borderLeftColor: '#16a34a',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '15px',
+    transition: 'all 0.3s'
   },
-  historyHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' },
-  dateTag: { fontSize: '12px', color: '#6b7280', backgroundColor: '#f3f4f6', padding: '4px 10px', borderRadius: '4px' },
-  ratingBox: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', padding: '12px', backgroundColor: '#fef3c7', borderRadius: '8px' },
-  ratingLabel: { fontSize: '13px', fontWeight: '600', color: '#92400e' },
-  ratingValue: { fontSize: '18px', fontWeight: 'bold', color: '#d97706' },
-  commentBox: { backgroundColor: '#f9fafb', padding: '12px', borderRadius: '8px', fontStyle: 'italic', color: '#555', fontSize: '14px', borderLeft: '3px solid #d97706' },
-  noComment: { fontStyle: 'italic', color: '#999', fontSize: '13px', margin: 0 },
+  historyHeader: { 
+    display: 'flex', 
+    justifyContent: 'space-between', 
+    alignItems: 'center',
+    paddingBottom: '12px',
+    borderBottom: '1px solid #e5e7eb'
+  },
+  historyHeaderLeft: {
+    display: 'flex',
+    gap: '10px',
+    alignItems: 'center'
+  },
+  archivedBadge: {
+    backgroundColor: '#d1d5db',
+    color: '#4b5563',
+    padding: '6px 12px',
+    borderRadius: '6px',
+    fontSize: '12px',
+    fontWeight: 'bold'
+  },
+  historyDetails: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px'
+  },
+  detailRow: {
+    display: 'flex',
+    gap: '10px',
+    alignItems: 'flex-start'
+  },
+  detailIcon: {
+    fontSize: '16px',
+    minWidth: '20px'
+  },
+  detailText: {
+    fontSize: '14px',
+    color: '#4b5563',
+    fontWeight: '500'
+  },
+  descriptionBox: {
+    backgroundColor: '#f9fafb',
+    padding: '12px',
+    borderRadius: '8px',
+    borderLeft: '3px solid #0284c7'
+  },
+  descriptionText: {
+    margin: 0,
+    fontSize: '13px',
+    color: '#6b7280',
+    lineHeight: '1.4'
+  },
+  photoArchiveSection: {
+    backgroundColor: '#f0f9ff',
+    border: '1px solid #bae6fd',
+    borderRadius: '8px',
+    padding: '12px'
+  },
+  photoArchiveTitle: {
+    margin: '0 0 10px 0',
+    fontSize: '13px',
+    fontWeight: 'bold',
+    color: '#0369a1'
+  },
+  photoGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+    gap: '10px'
+  },
+  photoCard: {
+    position: 'relative',
+    borderRadius: '6px',
+    overflow: 'hidden',
+    border: '2px solid #bae6fd'
+  },
+  photoLabel: {
+    position: 'absolute',
+    top: '8px',
+    right: '8px',
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    color: 'white',
+    padding: '4px 8px',
+    borderRadius: '4px',
+    fontSize: '11px',
+    fontWeight: 'bold',
+    zIndex: 10
+  },
+  archivePhoto: {
+    width: '100%',
+    height: '120px',
+    objectFit: 'cover',
+    display: 'block'
+  },
+  ratingSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px'
+  },
+  ratingBox: { 
+    display: 'flex', 
+    alignItems: 'center', 
+    gap: '12px', 
+    padding: '12px', 
+    backgroundColor: '#fef3c7', 
+    borderRadius: '8px',
+    border: '1px solid #fcd34d'
+  },
+  ratingLabel: { 
+    fontSize: '13px', 
+    fontWeight: '600', 
+    color: '#92400e' 
+  },
+  ratingStars: {
+    display: 'flex',
+    gap: '4px',
+    flex: 1
+  },
+  ratingValue: { 
+    fontSize: '16px', 
+    fontWeight: 'bold', 
+    color: '#d97706',
+    minWidth: '40px',
+    textAlign: 'right'
+  },
+  commentBox: { 
+    backgroundColor: '#f3f4f6', 
+    padding: '12px', 
+    borderRadius: '8px', 
+    borderLeft: '3px solid #d97706',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px'
+  },
+  commentLabel: {
+    fontSize: '12px',
+    fontWeight: 'bold',
+    color: '#6b7280'
+  },
+  commentText: {
+    margin: 0,
+    fontSize: '13px',
+    color: '#555',
+    fontStyle: 'italic',
+    lineHeight: '1.4'
+  },
+  noComment: { 
+    fontStyle: 'italic', 
+    color: '#999', 
+    fontSize: '13px', 
+    margin: 0 
+  },
+  pendingValidationBox: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    backgroundColor: '#fef3c7',
+    border: '1px solid #fcd34d',
+    borderRadius: '8px',
+    padding: '12px',
+    justifyContent: 'center'
+  },
+  pendingIcon: {
+    fontSize: '18px'
+  },
+  pendingText: {
+    fontSize: '13px',
+    fontWeight: '600',
+    color: '#92400e'
+  },
+  timestampBox: {
+    backgroundColor: '#e0f2fe',
+    border: '1px solid #bae6fd',
+    borderRadius: '6px',
+    padding: '10px',
+    textAlign: 'center'
+  },
+  timestampText: {
+    fontSize: '12px',
+    color: '#0369a1',
+    fontWeight: '500'
+  },
+  dateTag: { 
+    fontSize: '12px', 
+    color: '#6b7280', 
+    backgroundColor: '#f3f4f6', 
+    padding: '4px 10px', 
+    borderRadius: '4px' 
+  },
 
   // EMPTY STATE
   emptyState: { 
