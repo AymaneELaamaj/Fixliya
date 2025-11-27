@@ -184,7 +184,14 @@ export default function ArtisanHome() {
                         <div style={styles.cardHeader}>
                           <span style={styles.categoryTag}>{mission.category}</span>
                           {mission.isUrgent && <span style={styles.urgentBadge}>🚨 URGENT</span>}
+                          {mission.ticketType === 'planifier' && <span style={styles.planifierBadge}>📅 PLANIFIÉ</span>}
                         </div>
+                        {mission.ticketType === 'planifier' && mission.scheduledDate && (
+                          <div style={styles.planificationSection}>
+                            <div style={styles.planificationItem}>📅 {mission.scheduledDate}</div>
+                            {mission.scheduledTime && <div style={styles.planificationItem}>⏰ {mission.scheduledTime}</div>}
+                          </div>
+                        )}
                         <div style={styles.locationRow}>📍 {mission.location}</div>
                         <p style={styles.description}>{mission.description}</p>
                         <div style={styles.studentInfo}>👤 {mission.studentName}</div>
@@ -659,6 +666,30 @@ const styles = {
     cursor: 'pointer', 
     fontSize: '14px',
     transition: 'all 0.3s'
+  },
+  planifierBadge: {
+    backgroundColor: '#f0f9ff',
+    color: '#0369a1',
+    padding: '6px 10px',
+    borderRadius: '6px',
+    fontSize: '12px',
+    fontWeight: 'bold',
+    border: '1px solid #bae6fd'
+  },
+  planificationSection: {
+    backgroundColor: '#f0f9ff',
+    border: '1px solid #bae6fd',
+    borderRadius: '6px',
+    padding: '10px 12px',
+    marginTop: '8px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px'
+  },
+  planificationItem: {
+    fontSize: '13px',
+    fontWeight: '500',
+    color: '#0369a1'
   }
 };
 

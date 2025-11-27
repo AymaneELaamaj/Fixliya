@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getAllTickets, getArtisans, assignTicket, updateArtisan, deleteArtisan, getStatistics, getStudents, toggleStudentStatus } from '../services/adminService';
+import { getAllTickets, getArtisans, assignTicket, updateArtisan, deleteArtisan, getStatistics, getStudents, toggleStudentStatus, getExternalProviders, externalizeTicket } from '../services/adminService';
 import { logoutUser } from '../services/authService';
 import { useNavigate, Link } from 'react-router-dom';
 
@@ -7,6 +7,7 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const [tickets, setTickets] = useState([]);
   const [artisans, setArtisans] = useState([]);
+  const [externalProviders, setExternalProviders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingArtisanId, setEditingArtisanId] = useState(null);
   const [editFormData, setEditFormData] = useState({});
@@ -18,6 +19,8 @@ export default function AdminDashboard() {
   const [statistics, setStatistics] = useState(null);
   const [students, setStudents] = useState([]);
   const [filterStudentStatus, setFilterStudentStatus] = useState("all");
+  const [showExternalizeModal, setShowExternalizeModal] = useState(false);
+  const [selectedTicketForExternalize, setSelectedTicketForExternalize] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -26,9 +29,12 @@ export default function AdminDashboard() {
         const artisansData = await getArtisans();
         const statsData = await getStatistics();
         const studentsData = await getStudents();
+        const providersData = await getExternalProviders();
         const sortedTickets = ticketsData.sort((a, b) => Number(b.isUrgent) - Number(a.isUrgent));
         setTickets(sortedTickets);
         setArtisans(artisansData);
+        setExternalProviders(providersData);
+
         setStatistics(statsData);
         setStudents(studentsData);
       } catch (err) {
@@ -118,6 +124,45 @@ export default function AdminDashboard() {
     } catch (err) {
       console.error(err);
       alert("Erreur lors de la mise à jour");
+    }
+  };
+
+  const handleExternalizeClick = (ticket) => {
+    setSelectedTicketForExternalize(ticket);
+    setShowExternalizeModal(true);
+  };
+
+  const handleExternalizeTicket = async (providerId) => {
+    if (!selectedTicketForExternalize || !providerId) return;
+
+    const selectedProvider = externalProviders.find(p => p.id === providerId);
+    if (!selectedProvider) return;
+
+    try {
+      await externalizeTicket(selectedTicketForExternalize.id, providerId, {
+        name: selectedProvider.name,
+        phone: selectedProvider.phone,
+        email: selectedProvider.email
+      });
+
+      alert(`Ticket externalisé avec succès à ${selectedProvider.name} !`);
+      setTickets(tickets.map(t => 
+        t.id === selectedTicketForExternalize.id 
+          ? { 
+              ...t, 
+              status: 'externalized',
+              isExternalized: true,
+              externalizedToName: selectedProvider.name,
+              assignedToName: null,
+              assignedToId: null
+            } 
+          : t
+      ));
+      setShowExternalizeModal(false);
+      setSelectedTicketForExternalize(null);
+    } catch (err) {
+      console.error(err);
+      alert("Erreur lors de l'externalisation");
     }
   };
 
@@ -236,8 +281,10 @@ export default function AdminDashboard() {
                     <th style={styles.thCell}>Catégorie</th>
                     <th style={styles.thCell}>Lieu</th>
                     <th style={styles.thCell}>Description</th>
+                    <th style={styles.thCell}>Planification</th>
                     <th style={styles.thCell}>Statut</th>
                     <th style={styles.thCell}>Assigné à</th>
+                    <th style={styles.thCell}>Actions</th>
                     <th style={styles.thCell}>ID</th>
                   </tr>
                 </thead>
@@ -257,11 +304,24 @@ export default function AdminDashboard() {
                       <td style={styles.tdCell}>{ticket.location || "N/A"}</td>
                       <td style={{...styles.tdCell, ...styles.descriptionCell}}>{ticket.description}</td>
                       <td style={styles.tdCell}>
+                        {ticket.ticketType === 'planifier' && ticket.scheduledDate ? (
+                          <div style={styles.planificationInfo}>
+                            <div>📅 {ticket.scheduledDate}</div>
+                            {ticket.scheduledTime && <div>⏰ {ticket.scheduledTime}</div>}
+                          </div>
+                        ) : ticket.isUrgent ? (
+                          <span style={{ color: '#dc2626', fontWeight: 'bold' }}>🚨 Urgent</span>
+                        ) : (
+                          <span style={{ color: '#94a3b8' }}>—</span>
+                        )}
+                      </td>
+                      <td style={styles.tdCell}>
                         <span style={getStatusStyle(ticket.status)}>
                           {ticket.status === 'pending' ? '⏳ Attente' : 
                            ticket.status === 'in_progress' ? '⚙️ En cours' : 
                            ticket.status === 'termine_artisan' ? '✅ Terminé' :
-                           ticket.status === 'cancelled' ? '❌ Annulé' : '🏁 Clôturé'}
+                           ticket.status === 'cancelled' ? '❌ Annulé' :
+                           ticket.status === 'externalized' ? '🌐 Externalisé' : '🏁 Clôturé'}
                         </span>
                       </td>
                       <td style={styles.tdCell}>
@@ -269,6 +329,8 @@ export default function AdminDashboard() {
                           <span style={{ color: '#6b7280', fontSize: '12px' }}>Clôturé</span>
                         ) : ticket.status === 'cancelled' ? (
                           <span style={{ color: '#dc2626', fontSize: '12px', fontWeight: 'bold' }}>Annulé</span>
+                        ) : ticket.status === 'externalized' ? (
+                          <span style={{ color: '#7c3aed', fontSize: '12px', fontWeight: 'bold' }}>🌐 {ticket.externalizedToName}</span>
                         ) : ticket.assignedToName ? (
                           <strong style={{ color: '#059669' }}>✓ {ticket.assignedToName}</strong>
                         ) : (
@@ -284,6 +346,23 @@ export default function AdminDashboard() {
                               </option>
                             ))}
                           </select>
+                        )}
+                      </td>
+                      <td style={styles.tdCell}>
+                        {ticket.status === 'completed' || ticket.status === 'cancelled' ? (
+                          <span style={{ color: '#94a3b8', fontSize: '12px' }}>—</span>
+                        ) : ticket.isExternalized ? (
+                          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                            <span style={styles.externalizedBadge}>🌐 {ticket.externalizedToName}</span>
+                          </div>
+                        ) : (
+                          <button 
+                            onClick={() => handleExternalizeClick(ticket)}
+                            style={styles.externalizeBtn}
+                            title="Externaliser vers prestataire agréé"
+                          >
+                            🌐 Externaliser
+                          </button>
                         )}
                       </td>
                       <td style={styles.tdCell}>
@@ -584,9 +663,77 @@ export default function AdminDashboard() {
           </div>
         )}
       </main>
+
+      {/* Modal Externalisation */}
+      {showExternalizeModal && selectedTicketForExternalize && (
+        <div style={styles.modalOverlay} onClick={() => setShowExternalizeModal(false)}>
+          <div style={styles.externalizeModal} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.modalHeader}>
+              <h2 style={styles.modalTitle}>🌐 Externaliser le Ticket</h2>
+              <button 
+                style={styles.closeBtn}
+                onClick={() => setShowExternalizeModal(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={styles.modalContent}>
+              <div style={styles.ticketSummary}>
+                <h3 style={styles.summaryTitle}>Détails du Ticket</h3>
+                <div style={styles.summaryItem}>
+                  <strong>Catégorie:</strong> {selectedTicketForExternalize.category}
+                </div>
+                <div style={styles.summaryItem}>
+                  <strong>Description:</strong> {selectedTicketForExternalize.description}
+                </div>
+                <div style={styles.summaryItem}>
+                  <strong>Lieu:</strong> {selectedTicketForExternalize.location}
+                </div>
+                <div style={styles.summaryItem}>
+                  <strong>Urgence:</strong> {selectedTicketForExternalize.isUrgent ? '🔴 URGENT' : '⚪ Normal'}
+                </div>
+              </div>
+
+              <div style={styles.providersSection}>
+                <h3 style={styles.sectionTitle}>Sélectionner un Prestataire</h3>
+                {externalProviders.length === 0 ? (
+                  <div style={styles.noProviders}>
+                    <p>Aucun prestataire externe disponible</p>
+                  </div>
+                ) : (
+                  <div style={styles.providersList}>
+                    {externalProviders.map(provider => (
+                      <div key={provider.id} style={styles.providerOption}>
+                        <div style={styles.providerInfo}>
+                          <h4 style={styles.providerName}>{provider.name}</h4>
+                          <p style={styles.providerDetail}>📧 {provider.email}</p>
+                          <p style={styles.providerDetail}>📞 {provider.phone}</p>
+                          {provider.specialties && provider.specialties.length > 0 && (
+                            <p style={styles.providerDetail}>🛠️ {provider.specialties.join(', ')}</p>
+                          )}
+                          {provider.rating && (
+                            <p style={styles.providerDetail}>⭐ {provider.rating}/5</p>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => handleExternalizeTicket(provider.id)}
+                          style={styles.selectProviderBtn}
+                        >
+                          Sélectionner
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-}
+};
 
 const getStatusStyle = (status) => {
   const base = { 
@@ -600,6 +747,7 @@ const getStatusStyle = (status) => {
   if (status === 'in_progress') return { ...base, backgroundColor: '#dbeafe', color: '#2563eb' };
   if (status === 'termine_artisan') return { ...base, backgroundColor: '#d1fae5', color: '#059669' };
   if (status === 'cancelled') return { ...base, backgroundColor: '#fee2e2', color: '#dc2626' };
+  if (status === 'externalized') return { ...base, backgroundColor: '#ede9fe', color: '#7c3aed' };
   return { ...base, backgroundColor: '#dcfce7', color: '#16a34a' };
 };
 
@@ -1221,5 +1369,161 @@ const styles = {
     fontSize: '13px',
     fontWeight: 'bold',
     transition: 'all 0.3s ease'
+  },
+  planificationInfo: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+    padding: '8px 10px',
+    backgroundColor: '#f0f9ff',
+    borderRadius: '6px',
+    fontSize: '12px',
+    color: '#0369a1',
+    fontWeight: '500',
+    border: '1px solid #bae6fd'
+  },
+  externalizeBtn: {
+    backgroundColor: '#7c3aed',
+    color: 'white',
+    border: 'none',
+    padding: '8px 12px',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontSize: '12px',
+    fontWeight: 'bold',
+    transition: 'all 0.3s ease',
+    whiteSpace: 'nowrap'
+  },
+  externalizedBadge: {
+    backgroundColor: '#ede9fe',
+    color: '#7c3aed',
+    padding: '6px 10px',
+    borderRadius: '6px',
+    fontSize: '12px',
+    fontWeight: 'bold',
+    border: '1px solid #ddd6fe'
+  },
+  modalOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000
+  },
+  externalizeModal: {
+    backgroundColor: 'white',
+    borderRadius: '8px',
+    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+    maxWidth: '700px',
+    maxHeight: '80vh',
+    overflowY: 'auto',
+    width: '90%'
+  },
+  modalHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottom: '2px solid #e2e8f0',
+    padding: '20px',
+    backgroundColor: '#f9fafb'
+  },
+  modalTitle: {
+    margin: 0,
+    fontSize: '18px',
+    fontWeight: 'bold',
+    color: '#1e293b'
+  },
+  closeBtn: {
+    backgroundColor: 'transparent',
+    border: 'none',
+    fontSize: '24px',
+    cursor: 'pointer',
+    color: '#64748b'
+  },
+  modalContent: {
+    padding: '20px'
+  },
+  ticketSummary: {
+    backgroundColor: '#f0f9ff',
+    border: '1px solid #bae6fd',
+    borderRadius: '6px',
+    padding: '15px',
+    marginBottom: '20px'
+  },
+  summaryTitle: {
+    margin: '0 0 12px 0',
+    fontSize: '14px',
+    fontWeight: 'bold',
+    color: '#0369a1'
+  },
+  summaryItem: {
+    fontSize: '13px',
+    color: '#475569',
+    marginBottom: '8px',
+    padding: '6px 0',
+    borderBottom: '1px solid #bae6fd'
+  },
+  providersSection: {
+    marginTop: '20px'
+  },
+  sectionTitle: {
+    margin: '0 0 15px 0',
+    fontSize: '16px',
+    fontWeight: 'bold',
+    color: '#1e293b'
+  },
+  noProviders: {
+    textAlign: 'center',
+    padding: '30px',
+    backgroundColor: '#f8fafc',
+    borderRadius: '6px',
+    color: '#64748b'
+  },
+  providersList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px'
+  },
+  providerOption: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '12px',
+    border: '1px solid #e2e8f0',
+    borderRadius: '6px',
+    backgroundColor: '#f9fafb',
+    transition: 'all 0.3s ease'
+  },
+  providerInfo: {
+    flex: 1
+  },
+  providerName: {
+    margin: '0 0 6px 0',
+    fontSize: '14px',
+    fontWeight: 'bold',
+    color: '#1e293b'
+  },
+  providerDetail: {
+    margin: '4px 0',
+    fontSize: '12px',
+    color: '#64748b'
+  },
+  selectProviderBtn: {
+    backgroundColor: '#7c3aed',
+    color: 'white',
+    border: 'none',
+    padding: '10px 16px',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontSize: '13px',
+    fontWeight: 'bold',
+    transition: 'all 0.3s ease',
+    marginLeft: '12px',
+    whiteSpace: 'nowrap'
   }
 };

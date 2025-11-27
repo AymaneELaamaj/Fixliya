@@ -214,3 +214,65 @@ export const toggleStudentStatus = async (studentId, isActive) => {
     throw error;
   }
 };
+
+/**
+ * 10. Récupérer tous les prestataires externes agréés
+ */
+export const getExternalProviders = async () => {
+  try {
+    const q = query(collection(db, "externalProviders"));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error("Erreur lors de la récupération des prestataires:", error);
+    throw error;
+  }
+};
+
+/**
+ * 11. Externaliser un ticket vers un prestataire agréé
+ */
+export const externalizeTicket = async (ticketId, providerId, providerData) => {
+  try {
+    const ticketRef = doc(db, "tickets", ticketId);
+    await updateDoc(ticketRef, {
+      isExternalized: true,
+      externalizedToId: providerId,
+      externalizedToName: providerData.name,
+      externalizedToPhone: providerData.phone,
+      externalizedToEmail: providerData.email,
+      externalizedAt: new Date().toISOString(),
+      status: "externalized",
+      assignedToId: null,
+      assignedToName: null
+    });
+  } catch (error) {
+    console.error("Erreur lors de l'externalisation:", error);
+    throw error;
+  }
+};
+
+/**
+ * 12. Créer un prestataire externe (Admin seulement)
+ */
+export const createExternalProvider = async (providerData) => {
+  try {
+    const providersRef = collection(db, "externalProviders");
+    const newProvider = {
+      name: providerData.name,
+      email: providerData.email,
+      phone: providerData.phone,
+      specialties: providerData.specialties || [],
+      isApproved: true,
+      createdAt: new Date().toISOString(),
+      rating: 0,
+      completedTickets: 0
+    };
+    
+    const docRef = await setDoc(doc(providersRef), newProvider);
+    return docRef;
+  } catch (error) {
+    console.error("Erreur lors de la création du prestataire:", error);
+    throw error;
+  }
+};
