@@ -1,6 +1,7 @@
 import { db, storage } from "../firebase";
-import { collection, addDoc, query, where, getDocs, doc, updateDoc } from "firebase/firestore"; 
+import { collection, addDoc, query, where, getDocs, doc, updateDoc, getDoc } from "firebase/firestore"; 
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { createNotification, NOTIFICATION_TYPES } from "./notificationService";
 
 
 export const getStudentTickets = async (studentId) => {
@@ -53,6 +54,14 @@ export const getTicketsAwaitingValidation = async (studentId) => {
 export const validateTicket = async (ticketId, rating, comment) => {
   try {
     const ticketRef = doc(db, "tickets", ticketId);
+    const ticketSnap = await getDoc(ticketRef);
+    
+    if (!ticketSnap.exists()) {
+      throw new Error("Ticket non trouvé");
+    }
+    
+    const ticketData = ticketSnap.data();
+    const studentId = ticketData.studentId;
     
     await updateDoc(ticketRef, {
       status: "completed",
@@ -60,6 +69,16 @@ export const validateTicket = async (ticketId, rating, comment) => {
       studentComment: comment,
       validatedAt: new Date().toISOString()
     });
+    
+    // Créer une notification de clôture
+    if (studentId) {
+      await createNotification(
+        studentId,
+        ticketId,
+        NOTIFICATION_TYPES.CLOSED,
+        { rating }
+      );
+    }
   } catch (error) {
     console.error("Erreur validation:", error);
     throw error;
@@ -157,6 +176,14 @@ export const createTicket = async (ticketData) => {
 export const cancelTicket = async (ticketId, reason = "") => {
   try {
     const ticketRef = doc(db, "tickets", ticketId);
+    const ticketSnap = await getDoc(ticketRef);
+    
+    if (!ticketSnap.exists()) {
+      throw new Error("Ticket non trouvé");
+    }
+    
+    const ticketData = ticketSnap.data();
+    const studentId = ticketData.studentId;
     
     await updateDoc(ticketRef, {
       status: "cancelled",
@@ -164,6 +191,16 @@ export const cancelTicket = async (ticketId, reason = "") => {
       cancelledAt: new Date().toISOString(),
       cancelledByStudent: true
     });
+    
+    // Créer une notification pour l'étudiant
+    if (studentId) {
+      await createNotification(
+        studentId,
+        ticketId,
+        NOTIFICATION_TYPES.CANCELLED,
+        {}
+      );
+    }
   } catch (error) {
     console.error("Erreur annulation ticket:", error);
     throw error;

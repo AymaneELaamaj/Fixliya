@@ -1,8 +1,9 @@
 // src/services/adminService.js
 import { db } from "../firebase";
-import { collection, query, getDocs, doc, updateDoc, where, setDoc, deleteDoc } from "firebase/firestore";
+import { collection, query, getDocs, doc, updateDoc, where, setDoc, deleteDoc, getDoc } from "firebase/firestore";
 import { initializeApp, getApp, deleteApp } from "firebase/app";
 import { getAuth, createUserWithEmailAndPassword, signOut } from "firebase/auth";
+import { createNotification, NOTIFICATION_TYPES } from "./notificationService";
 
 // Récupération dynamique de la config pour le "Ghost App"
 let firebaseConfig;
@@ -27,12 +28,35 @@ export const getAllTickets = async () => {
  * [cite: 37]
  */
 export const assignTicket = async (ticketId, artisanId, artisanName) => {
+  // Récupérer les infos du ticket pour obtenir le studentId
   const ticketRef = doc(db, "tickets", ticketId);
+  const ticketSnap = await getDoc(ticketRef);
+  
+  if (!ticketSnap.exists()) {
+    throw new Error("Ticket non trouvé");
+  }
+  
+  const ticketData = ticketSnap.data();
+  const studentId = ticketData.studentId;
+  const wasAssigned = !!ticketData.assignedToId;
+  
+  // Mettre à jour le ticket
   await updateDoc(ticketRef, {
     assignedToId: artisanId,   // ID pour la requête côté artisan
     assignedToName: artisanName, // Nom pour l'affichage admin
     status: "in_progress"      // Passe de 'pending' à 'in_progress' [cite: 28]
   });
+  
+  // Créer une notification pour l'étudiant
+  if (studentId) {
+    const notificationType = wasAssigned ? NOTIFICATION_TYPES.REASSIGNED : NOTIFICATION_TYPES.ASSIGNED;
+    await createNotification(
+      studentId,
+      ticketId,
+      notificationType,
+      { artisanName }
+    );
+  }
 };
 
 /**

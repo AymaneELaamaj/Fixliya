@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStudentData } from '../hooks/students';
 import StudentSidebar from '../components/student/layout/StudentSidebar';
@@ -11,6 +11,17 @@ export default function StudentHistory() {
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  // Détection du mobile
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Filtrer les tickets selon les critères
   const filteredTickets = useMemo(() => {
@@ -100,7 +111,12 @@ export default function StudentHistory() {
     return (
       <div style={styles.container}>
         <StudentSidebar userName={userName} userEmail={userEmail} activeTicketsCount={0} />
-        <div style={styles.mainContent}>
+        <div style={{
+          ...styles.mainContent,
+          marginLeft: isMobile ? 0 : '260px',
+          padding: isMobile ? '15px' : '30px',
+          paddingBottom: isMobile ? '80px' : '30px'
+        }}>
           <div style={styles.loading}>⏳ Chargement...</div>
         </div>
       </div>
@@ -115,15 +131,33 @@ export default function StudentHistory() {
         activeTicketsCount={stats.inProgress}
       />
       
-      <div style={styles.mainContent}>
+      <div style={{
+        ...styles.mainContent,
+        marginLeft: isMobile ? 0 : '260px',
+        padding: isMobile ? '15px' : '30px',
+        paddingBottom: isMobile ? '80px' : '30px'
+      }}>
         {/* Header */}
-        <div style={styles.header}>
-          <h1 style={styles.title}>📊 Historique des Réclamations</h1>
-          <p style={styles.subtitle}>Consultez toutes vos réclamations et statistiques</p>
+        <div style={{
+          ...styles.header,
+          marginBottom: isMobile ? '20px' : '30px'
+        }}>
+          <h1 style={{
+            ...styles.title,
+            fontSize: isMobile ? '20px' : '24px'
+          }}>📊 Historique des Réclamations</h1>
+          <p style={{
+            ...styles.subtitle,
+            fontSize: isMobile ? '12px' : '14px'
+          }}>Consultez toutes vos réclamations et statistiques</p>
         </div>
 
         {/* Statistiques Globales */}
-        <div style={styles.statsGrid}>
+        <div style={{
+          ...styles.statsGrid,
+          gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: isMobile ? '10px' : '20px'
+        }}>
           <div style={styles.statCard}>
             <div style={styles.statIcon}>📋</div>
             <div style={styles.statValue}>{stats.total}</div>
@@ -147,7 +181,12 @@ export default function StudentHistory() {
         </div>
 
         {/* Statistiques Additionnelles */}
-        <div style={styles.additionalStats}>
+        <div style={{
+          ...styles.additionalStats,
+          flexDirection: isMobile ? 'column' : 'row',
+          gap: isMobile ? '10px' : '20px',
+          padding: isMobile ? '15px' : '20px'
+        }}>
           <div style={styles.statItem}>
             <span style={styles.statItemLabel}>Taux de résolution:</span>
             <span style={styles.statItemValue}>{stats.resolutionRate}%</span>
@@ -159,8 +198,15 @@ export default function StudentHistory() {
         </div>
 
         {/* Filtres */}
-        <div style={styles.filtersCard}>
-          <div style={styles.filtersRow}>
+        <div style={{
+          ...styles.filtersCard,
+          padding: isMobile ? '15px' : '20px'
+        }}>
+          <div style={{
+            ...styles.filtersRow,
+            gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: isMobile ? '10px' : '15px'
+          }}>
             <select 
               value={selectedPeriod} 
               onChange={(e) => setSelectedPeriod(e.target.value)}
@@ -229,6 +275,7 @@ export default function StudentHistory() {
                 ticket={ticket} 
                 isLast={index === filteredTickets.length - 1}
                 onClick={() => navigate('/app/student')}
+                isMobile={isMobile}
               />
             ))
           )}
@@ -239,7 +286,7 @@ export default function StudentHistory() {
 }
 
 // Composant TimelineItem
-function TimelineItem({ ticket, isLast, onClick }) {
+function TimelineItem({ ticket, isLast, onClick, isMobile }) {
   const statusConfig = {
     pending: { color: '#f59e0b', label: 'En attente', icon: '⏳' },
     in_progress: { color: '#3b82f6', label: 'En cours', icon: '🔧' },
@@ -252,17 +299,43 @@ function TimelineItem({ ticket, isLast, onClick }) {
   const date = new Date(ticket.createdAt);
 
   return (
-    <div style={styles.timelineItem}>
-      <div style={styles.timelineDot}>
-        <div style={{...styles.dot, backgroundColor: config.color}}>
+    <div style={{
+      ...styles.timelineItem,
+      gap: isMobile ? '12px' : '20px',
+      marginBottom: isMobile ? '15px' : '20px'
+    }}>
+      <div style={{
+        ...styles.timelineDot,
+        minWidth: isMobile ? '30px' : '40px'
+      }}>
+        <div style={{
+          ...styles.dot, 
+          backgroundColor: config.color,
+          width: isMobile ? '30px' : '40px',
+          height: isMobile ? '30px' : '40px',
+          fontSize: isMobile ? '14px' : '18px'
+        }}>
           {config.icon}
         </div>
         {!isLast && <div style={styles.line} />}
       </div>
       
-      <div style={styles.timelineContent} onClick={onClick}>
-        <div style={styles.timelineHeader}>
-          <span style={{...styles.statusBadge, backgroundColor: config.color}}>
+      <div style={{
+        ...styles.timelineContent,
+        padding: isMobile ? '12px' : '20px'
+      }} onClick={onClick}>
+        <div style={{
+          ...styles.timelineHeader,
+          flexDirection: isMobile ? 'column' : 'row',
+          alignItems: isMobile ? 'flex-start' : 'center',
+          gap: isMobile ? '8px' : '0'
+        }}>
+          <span style={{
+            ...styles.statusBadge, 
+            backgroundColor: config.color,
+            fontSize: isMobile ? '11px' : '12px',
+            padding: isMobile ? '3px 10px' : '4px 12px'
+          }}>
             {config.label}
           </span>
           <span style={styles.timelineDate}>
@@ -275,8 +348,14 @@ function TimelineItem({ ticket, isLast, onClick }) {
           {ticket.isUrgent && <span style={styles.urgentBadge}>⚠️ URGENT</span>}
         </div>
         
-        <div style={styles.ticketLocation}>📍 {ticket.location}</div>
-        <div style={styles.ticketDescription}>{ticket.description}</div>
+        <div style={{
+          ...styles.ticketLocation,
+          fontSize: isMobile ? '12px' : '13px'
+        }}>📍 {ticket.location}</div>
+        <div style={{
+          ...styles.ticketDescription,
+          fontSize: isMobile ? '13px' : '14px'
+        }}>{ticket.description}</div>
         
         {ticket.assignedToName && (
           <div style={styles.ticketArtisan}>👨‍🔧 {ticket.assignedToName}</div>
@@ -301,13 +380,7 @@ const styles = {
 
   mainContent: {
     flex: 1,
-    marginLeft: '260px',
-    padding: '30px',
-    transition: 'margin-left 0.3s ease',
-    '@media (max-width: 768px)': {
-      marginLeft: 0,
-      padding: '20px'
-    }
+    transition: 'margin-left 0.3s ease'
   },
 
   loading: {
@@ -322,7 +395,7 @@ const styles = {
   },
 
   title: {
-    fontSize: '28px',
+    fontSize: '24px',
     fontWeight: 'bold',
     color: '#1f2937',
     margin: '0 0 8px 0'
@@ -344,22 +417,22 @@ const styles = {
   statCard: {
     backgroundColor: 'white',
     borderRadius: '12px',
-    padding: '20px',
+    padding: '15px',
     textAlign: 'center',
     border: '2px solid #e5e7eb',
     boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
   },
 
   statIcon: {
-    fontSize: '32px',
+    fontSize: '28px',
     marginBottom: '10px'
   },
 
   statValue: {
-    fontSize: '32px',
+    fontSize: '28px',
     fontWeight: 'bold',
     color: '#005596',
-    marginBottom: '5px'
+    marginBottom: '8px'
   },
 
   statLabel: {
@@ -371,10 +444,8 @@ const styles = {
   additionalStats: {
     backgroundColor: 'white',
     borderRadius: '12px',
-    padding: '20px',
     marginBottom: '25px',
     display: 'flex',
-    gap: '30px',
     flexWrap: 'wrap'
   },
 

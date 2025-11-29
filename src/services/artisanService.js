@@ -1,5 +1,6 @@
 import { db } from "../firebase";
-import { collection, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, updateDoc, getDoc } from "firebase/firestore";
+import { createNotification, NOTIFICATION_TYPES } from "./notificationService";
 
 /**
  * 1. Récupérer "MA JOURNÉE"
@@ -34,8 +35,15 @@ export const completeMission = async (ticketId, proofData) => {
   try {
     const ticketRef = doc(db, "tickets", ticketId);
     
-    // Récupérer les détails du ticket pour obtenir l'email de l'étudiant
-    const ticketSnap = await getDocs(query(collection(db, "tickets"), where("__name__", "==", ticketId)));
+    // Récupérer les infos du ticket pour obtenir le studentId
+    const ticketSnap = await getDoc(ticketRef);
+    
+    if (!ticketSnap.exists()) {
+      throw new Error("Ticket non trouvé");
+    }
+    
+    const ticketData = ticketSnap.data();
+    const studentId = ticketData.studentId;
     
     // N'envoyer que la photo APRÈS (pas la photo AVANT)
     // La photo AVANT reste locale chez l'artisan
@@ -46,8 +54,15 @@ export const completeMission = async (ticketId, proofData) => {
       completedAt: proofData.completedAt
     });
 
-    // TODO: Envoyer notification à l'étudiant via email ou push notification
-    // L'étudiant devra valider l'intervention et laisser un avis
+    // Créer une notification pour l'étudiant
+    if (studentId) {
+      await createNotification(
+        studentId,
+        ticketId,
+        NOTIFICATION_TYPES.COMPLETED,
+        { artisanName: ticketData.assignedToName }
+      );
+    }
     
   } catch (error) {
     console.error("Erreur Clôture:", error);
