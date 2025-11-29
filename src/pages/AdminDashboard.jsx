@@ -32,6 +32,9 @@ export default function AdminDashboard() {
   const [viewMode, setViewMode] = useState('2d'); // '2d' ou 'list'
   const [selectedBuilding, setSelectedBuilding] = useState(null);
 
+  // --- ÉTAT POUR LE MENU MOBILE ---
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
   const [externalizeModal, setExternalizeModal] = useState({
     isOpen: false,
     ticket: null
@@ -134,7 +137,22 @@ export default function AdminDashboard() {
 
   return (
     <div className={styles.pageContainer}>
-      <Sidebar activeTab={activeTab} onTabChange={setActiveTab} onLogout={handleLogout} />
+      {/* Burger Menu Button (Mobile Only) */}
+      <button 
+        className={styles.burgerButton}
+        onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+        aria-label="Menu"
+      >
+        ☰
+      </button>
+
+      <Sidebar 
+        activeTab={activeTab} 
+        onTabChange={setActiveTab} 
+        onLogout={handleLogout}
+        isMobileOpen={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
+      />
 
       <main className={styles.mainContent}>
         
@@ -182,7 +200,7 @@ export default function AdminDashboard() {
         {activeTab === 'tickets' ? (
           viewMode === '2d' ? (
             // --- VUE 2D DYNAMIQUE ---
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '20px', paddingBottom:'20px' }}>
+            <div className={styles.buildingsGrid} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '20px', paddingBottom:'20px' }}>
               {buildingsFromData.length > 0 ? (
                 buildingsFromData.map(b => (
                   <div key={b.id} onClick={() => handleBuildingClick(b.name)}>
@@ -213,6 +231,38 @@ export default function AdminDashboard() {
         )}
 
       </main>
+
+      {/* Bottom Navigation (Mobile Only - Alternative) */}
+      <nav className={styles.bottomNav}>
+        <button 
+          className={`${styles.bottomNavButton} ${activeTab === 'tickets' ? styles.active : ''}`}
+          onClick={() => setActiveTab('tickets')}
+        >
+          📋
+          <span>Tickets</span>
+        </button>
+        <button 
+          className={`${styles.bottomNavButton} ${activeTab === 'artisans' ? styles.active : ''}`}
+          onClick={() => setActiveTab('artisans')}
+        >
+          👨‍🔧
+          <span>Artisans</span>
+        </button>
+        <button 
+          className={`${styles.bottomNavButton} ${activeTab === 'statistics' ? styles.active : ''}`}
+          onClick={() => setActiveTab('statistics')}
+        >
+          📊
+          <span>Stats</span>
+        </button>
+        <button 
+          className={`${styles.bottomNavButton} ${activeTab === 'students' ? styles.active : ''}`}
+          onClick={() => setActiveTab('students')}
+        >
+          👨‍🎓
+          <span>Étudiants</span>
+        </button>
+      </nav>
 
       {externalizeModal.isOpen && (
         <ExternalizeModal

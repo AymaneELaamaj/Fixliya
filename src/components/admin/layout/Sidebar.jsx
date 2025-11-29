@@ -8,28 +8,42 @@ const TABS = [
   { id: 'students', label: '👨‍🎓 Gestion Étudiants', icon: '👨‍🎓' }
 ];
 
-export default function Sidebar({ activeTab, onTabChange, onLogout }) {
+export default function Sidebar({ activeTab, onTabChange, onLogout, isMobileOpen, onCloseMobile }) {
   return (
-    <aside className={styles.sidebar}>
-      <div className={styles.sidebarHeader}>
-        <h2 className={styles.sidebarTitle}>🛠️ Admin</h2>
-      </div>
+    <>
+      {/* Mobile Overlay */}
+      {isMobileOpen && (
+        <div 
+          className={`${styles.sidebarMobileOverlay} ${isMobileOpen ? styles.active : ''}`}
+          onClick={onCloseMobile}
+        />
+      )}
 
-      <nav className={styles.nav}>
-        {TABS.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => onTabChange(tab.id)}
-            className={`${styles.navButton} ${activeTab === tab.id ? styles.navButtonActive : ''}`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </nav>
+      {/* Sidebar */}
+      <aside className={`${styles.sidebar} ${isMobileOpen ? styles.active : ''}`}>
+        <div className={styles.sidebarHeader}>
+          <h2 className={styles.sidebarTitle}>🛠️ Admin</h2>
+        </div>
 
-      <button onClick={onLogout} className={styles.logoutBtn}>
-        🚪 Déconnexion
-      </button>
-    </aside>
+        <nav className={styles.nav}>
+          {TABS.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => {
+                onTabChange(tab.id);
+                if (onCloseMobile) onCloseMobile();
+              }}
+              className={`${styles.navButton} ${activeTab === tab.id ? styles.navButtonActive : ''}`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+
+        <button onClick={onLogout} className={styles.logoutBtn}>
+          🚪 Déconnexion
+        </button>
+      </aside>
+    </>
   );
 }

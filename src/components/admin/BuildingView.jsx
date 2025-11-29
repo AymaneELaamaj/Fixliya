@@ -7,14 +7,15 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    padding: '15px',
+    padding: '20px', // Augmenté pour mobile
     backgroundColor: 'white',
     borderRadius: '12px',
-    // La magie : Bordure Rouge si Alerte, Verte si Safe
     border: '3px solid',
     transition: 'all 0.3s ease',
     cursor: 'pointer',
-    minWidth: '200px'
+    minWidth: '200px',
+    width: '100%', // Pleine largeur sur mobile
+    boxSizing: 'border-box'
   },
   
   // Le Toit

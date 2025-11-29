@@ -61,7 +61,7 @@ export default function TicketsTab({ tickets, artisans, onAssign, onExternalize 
         </select>
       </div>
 
-      {/* Table */}
+      {/* Desktop Table View */}
       <div className={styles.tableContainer}>
         <table className={styles.table}>
           <thead>
@@ -89,6 +89,19 @@ export default function TicketsTab({ tickets, artisans, onAssign, onExternalize 
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile Cards View */}
+      <div className={styles.mobileTicketsList}>
+        {filteredTickets.map(ticket => (
+          <MobileTicketCard
+            key={ticket.id}
+            ticket={ticket}
+            artisans={artisans}
+            onAssign={onAssign}
+            onExternalize={onExternalize}
+          />
+        ))}
       </div>
 
       <div className={styles.ticketCount}>
@@ -233,5 +246,126 @@ function ActionsCell({ ticket, onExternalize }) {
     >
       🌐 Externaliser
     </button>
+  );
+}
+
+// Mobile Ticket Card Component
+function MobileTicketCard({ ticket, artisans, onAssign, onExternalize }) {
+  const handleAssign = (e) => {
+    const artisanId = e.target.value;
+    if (artisanId) {
+      onAssign(ticket.id, artisanId);
+    }
+  };
+
+  const isCompleted = ticket.status === 'completed' || ticket.status === 'cancelled';
+  const isExternalized = ticket.status === 'externalized';
+
+  return (
+    <div className={`${styles.mobileTicketCard} ${ticket.isUrgent ? styles.urgent : ''}`}>
+      {/* Header: Urgence + Statut */}
+      <div className={styles.mobileCardHeader}>
+        <span className={`${styles.badge} ${ticket.isUrgent ? styles.badgeUrgent : styles.badgeNormal}`}>
+          {ticket.isUrgent ? '🔴 URGENT' : '⚪ Normal'}
+        </span>
+        <span className={`${styles.badge} ${getStatusBadgeClass(ticket.status, styles)}`}>
+          {getStatusLabel(ticket.status)}
+        </span>
+      </div>
+
+      {/* Titre */}
+      <div className={styles.mobileCardTitle}>
+        {ticket.category} - {ticket.location || 'N/A'}
+      </div>
+
+      {/* Description tronquée */}
+      <div className={styles.mobileCardDescription}>
+        {ticket.description}
+      </div>
+
+      {/* Infos */}
+      <div className={styles.mobileCardInfo}>
+        <div className={styles.mobileCardInfoItem}>
+          <span className={styles.mobileCardInfoLabel}>📍 Lieu:</span>
+          <span>{ticket.location || 'N/A'}</span>
+        </div>
+        
+        {ticket.ticketType === 'planifier' && ticket.scheduledDate && (
+          <>
+            <div className={styles.mobileCardInfoItem}>
+              <span className={styles.mobileCardInfoLabel}>📅 Date:</span>
+              <span>{ticket.scheduledDate}</span>
+            </div>
+            {ticket.scheduledTime && (
+              <div className={styles.mobileCardInfoItem}>
+                <span className={styles.mobileCardInfoLabel}>⏰ Heure:</span>
+                <span>{ticket.scheduledTime}</span>
+              </div>
+            )}
+          </>
+        )}
+
+        <div className={styles.mobileCardInfoItem}>
+          <span className={styles.mobileCardInfoLabel}>👤 Assigné à:</span>
+          <span>
+            {isExternalized ? (
+              <span style={{ color: '#7c3aed', fontWeight: 'bold' }}>
+                🌐 {ticket.externalizedToName}
+              </span>
+            ) : ticket.assignedToName ? (
+              <span style={{ color: '#059669', fontWeight: 'bold' }}>
+                ✓ {ticket.assignedToName}
+              </span>
+            ) : (
+              <span style={{ color: '#94a3b8' }}>Non assigné</span>
+            )}
+          </span>
+        </div>
+
+        <div className={styles.mobileCardInfoItem}>
+          <span className={styles.mobileCardInfoLabel}>🔖 ID:</span>
+          <span style={{ fontFamily: 'monospace', fontSize: '11px' }}>
+            {ticket.id.substring(0, 8)}
+          </span>
+        </div>
+      </div>
+
+      {/* Actions */}
+      {!isCompleted && (
+        <div className={styles.mobileCardActions}>
+          {!isExternalized && !ticket.assignedToName && (
+            <select 
+              onChange={handleAssign} 
+              defaultValue=""
+              style={{
+                backgroundColor: '#005596',
+                color: 'white',
+                fontWeight: '600'
+              }}
+            >
+              <option value="" disabled>👨‍🔧 Assigner à un artisan...</option>
+              {artisans.map(artisan => (
+                <option key={artisan.id} value={artisan.id}>
+                  {artisan.prenom} ({artisan.specialite})
+                </option>
+              ))}
+            </select>
+          )}
+
+          {!isExternalized && (
+            <button
+              onClick={() => onExternalize(ticket)}
+              style={{
+                backgroundColor: '#7c3aed',
+                color: 'white',
+                fontWeight: '600'
+              }}
+            >
+              🌐 Externaliser ce ticket
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
