@@ -21,8 +21,6 @@ export default function Login() {
       // On utilise l'UID récupéré à l'étape 1
       const userProfile = await getUserProfile(userAuth.uid);
 
-      alert(`Bienvenue ${userProfile.prenom} !`);
-
       // 3. Redirection conditionnelle selon le rôle
       if (userProfile.role === 'admin') {
           navigate('/app/admin'); // Crée cette route si elle n'existe pas

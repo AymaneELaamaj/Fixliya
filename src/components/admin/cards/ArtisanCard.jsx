@@ -20,7 +20,7 @@ export default function ArtisanCard({ artisan, onUpdate, onDelete }) {
       await onUpdate(artisan.id, formData);
       setIsEditing(false);
     } catch (err) {
-      alert('Erreur lors de la modification: ' + err.message);
+      console.error('Erreur modification artisan:', err);
     }
   };
 

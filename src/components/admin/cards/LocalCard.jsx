@@ -17,7 +17,6 @@ export default function LocalCard({ local, onEdit, onDelete, onToggleStatus }) {
         await onDelete(local.id);
       } catch (error) {
         console.error("Erreur suppression:", error);
-        alert("Erreur lors de la suppression");
       } finally {
         setIsDeleting(false);
       }
@@ -29,7 +28,6 @@ export default function LocalCard({ local, onEdit, onDelete, onToggleStatus }) {
       await onToggleStatus(local.id, !local.isActive);
     } catch (error) {
       console.error("Erreur changement statut:", error);
-      alert("Erreur lors du changement de statut");
     }
   };
 

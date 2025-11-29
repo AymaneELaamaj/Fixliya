@@ -72,18 +72,35 @@ export function useAdminData() {
       throw new Error("Artisan non trouvé");
     }
 
-    await assignTicket(ticketId, artisanId, selectedArtisan.prenom);
-
+    // Mise à jour optimiste (immédiate dans l'UI)
     setData(prev => ({
       ...prev,
       tickets: prev.tickets.map(t =>
         t.id === ticketId
-          ? { ...t, status: 'in_progress', assignedToName: selectedArtisan.prenom }
+          ? { ...t, status: 'in_progress', assignedToName: selectedArtisan.prenom, assignedToId: artisanId }
           : t
       )
     }));
 
-    return selectedArtisan;
+    try {
+      // Ensuite mise à jour Firebase
+      await assignTicket(ticketId, artisanId, selectedArtisan.prenom);
+      return selectedArtisan;
+    } catch (error) {
+      // En cas d'erreur, revenir à l'état précédent
+      setData(prev => ({
+        ...prev,
+        tickets: prev.tickets.map(t =>
+          t.id === ticketId ? ticket : t
+        )
+      }));
+      
+      // Gérer les erreurs réseau spécifiquement
+      if (error.code === 'unavailable' || error.message?.includes('offline')) {
+        throw new Error('Erreur réseau : Vérifiez votre connexion internet');
+      }
+      throw error;
+    }
   }, [data.tickets, data.artisans]);
 
   const handleExternalizeTicket = useCallback(async (ticketId, providerId) => {

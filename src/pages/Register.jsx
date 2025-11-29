@@ -28,7 +28,6 @@ export default function Register() {
 
     try {
       await registerUser(formData);
-      alert("Compte créé avec succès !");
       // Redirection vers le Login pour la "Connexion Unique" [cite: 19]
       navigate('/login'); 
     } catch (err) {

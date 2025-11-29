@@ -9,6 +9,7 @@ import { getStudentTickets } from '../../services/ticketService';
 export const useStudentData = () => {
   const [tickets, setTickets] = useState([]);
   const [userName, setUserName] = useState("");
+  const [userId, setUserId] = useState("");
   const [loading, setLoading] = useState(true);
   const [isAccountDisabled, setIsAccountDisabled] = useState(false);
 
@@ -17,6 +18,8 @@ export const useStudentData = () => {
     if (!user) {
       return { needsRedirect: true };
     }
+
+    setUserId(user.uid);
 
     try {
       const userDoc = await getDoc(doc(db, "users", user.uid));
@@ -51,6 +54,7 @@ export const useStudentData = () => {
   return {
     tickets,
     userName,
+    userId,
     loading,
     isAccountDisabled,
     loadData

@@ -32,7 +32,6 @@ export const usePhotoCapture = (onSuccess) => {
     } catch (err) {
       console.error('Erreur caméra:', err);
       setIsCameraOpen(false);
-      alert("Impossible d'accéder à la caméra. Vérifiez les permissions.");
     }
   };
 
@@ -113,7 +112,6 @@ export const usePhotoCapture = (onSuccess) => {
   const submitProof = async () => {
     // Mode: seulement photo AVANT
     if (photoMode === 'before-only' && proofPhotos.before) {
-      alert("✅ Photo d'intervention AVANT enregistrée localement! Vous pouvez maintenant intervenir.");
       setShowProofModal(false);
       setProofPhotos({ before: null, after: null });
       return;
@@ -127,15 +125,13 @@ export const usePhotoCapture = (onSuccess) => {
           afterPhoto: proofPhotos.after.url,
           completedAt: new Date().toISOString()
         });
-        alert("✅ Intervention terminée! Les preuves ont été envoyées à l'étudiant pour validation.");
         setShowProofModal(false);
         setProofPhotos({ before: null, after: null });
         if (auth.currentUser && onSuccess) {
           await onSuccess(auth.currentUser.uid);
         }
       } catch (error) {
-        console.error(error);
-        alert('❌ Erreur lors de la soumission');
+        console.error('Erreur soumission photo:', error);
       }
       return;
     }
@@ -148,15 +144,13 @@ export const usePhotoCapture = (onSuccess) => {
           afterPhoto: proofPhotos.after.url,
           completedAt: new Date().toISOString()
         });
-        alert("✅ Intervention terminée! Les preuves ont été envoyées à l'étudiant pour validation.");
         setShowProofModal(false);
         setProofPhotos({ before: null, after: null });
         if (auth.currentUser && onSuccess) {
           await onSuccess(auth.currentUser.uid);
         }
       } catch (error) {
-        console.error(error);
-        alert('❌ Erreur lors de la soumission');
+        console.error('Erreur soumission photo:', error);
       }
     }
   };

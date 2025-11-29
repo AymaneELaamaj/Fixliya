@@ -41,7 +41,6 @@ export default function LocalsTab() {
     try {
       await actions.createLocal(localData);
       setShowForm(false);
-      alert('✅ Local créé avec succès !');
     } catch (error) {
       console.error("Erreur création:", error);
       throw error;
@@ -58,7 +57,6 @@ export default function LocalsTab() {
       await actions.updateLocal(editingLocal.id, localData);
       setShowForm(false);
       setEditingLocal(null);
-      alert('✅ Local modifié avec succès !');
     } catch (error) {
       console.error("Erreur modification:", error);
       throw error;
@@ -68,10 +66,8 @@ export default function LocalsTab() {
   const handleDelete = async (localId) => {
     try {
       await actions.deleteLocal(localId);
-      alert('✅ Local supprimé avec succès !');
     } catch (error) {
       console.error("Erreur suppression:", error);
-      alert('❌ Erreur lors de la suppression');
     }
   };
 
@@ -80,7 +76,6 @@ export default function LocalsTab() {
       await actions.toggleLocalStatus(localId, isActive);
     } catch (error) {
       console.error("Erreur changement statut:", error);
-      alert('❌ Erreur lors du changement de statut');
     }
   };
 

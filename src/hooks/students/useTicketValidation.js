@@ -29,15 +29,13 @@ export const useTicketValidation = (onValidationSuccess) => {
 
     try {
       await validateTicket(selectedTicket.id, rating, comment);
-      alert("Merci pour votre retour ! Ticket clôturé.");
       closeValidation();
 
       if (onValidationSuccess) {
         await onValidationSuccess();
       }
     } catch (error) {
-      console.error(error);
-      alert("Erreur lors de la validation.");
+      console.error('Erreur validation:', error);
     }
   };
 

@@ -9,20 +9,17 @@ export default function ArtisansTab({ artisans, onUpdate, onDelete, onCreate }) 
   const handleCreate = async (formData) => {
     await onCreate(formData);
     setShowForm(false);
-    alert('Artisan créé avec succès !');
   };
 
   const handleUpdate = async (artisanId, formData) => {
     await onUpdate(artisanId, formData);
-    alert('Artisan modifié avec succès !');
   };
 
   const handleDelete = async (artisanId) => {
     try {
       await onDelete(artisanId);
-      alert('Artisan supprimé avec succès !');
     } catch (err) {
-      alert('Erreur lors de la suppression: ' + err.message);
+      console.error('Erreur suppression artisan:', err);
     }
   };
 

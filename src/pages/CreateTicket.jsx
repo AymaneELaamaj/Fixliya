@@ -92,7 +92,6 @@ export default function CreateTicket() {
   // Démarrer la caméra
   const startCamera = async () => {
     if (photos.length >= 3) {
-      alert("Vous avez déjà atteint le maximum de 3 photos");
       return;
     }
     try {
@@ -116,14 +115,12 @@ export default function CreateTicket() {
       }
     } catch (err) {
       console.error("Erreur caméra:", err);
-      alert("Erreur d'accès à la caméra: " + err.message);
     }
   };
 
   // Prendre une photo
   const capturePhoto = () => {
     if (photos.length >= 3) {
-      alert("Maximum 3 photos atteintes");
       return;
     }
     if (videoRef.current && canvasRef.current) {
@@ -171,7 +168,6 @@ export default function CreateTicket() {
     const remainingSlots = 3 - photos.length;
 
     if (files.length > remainingSlots) {
-      alert(`Vous pouvez ajouter seulement ${remainingSlots} photo(s) de plus`);
       return;
     }
 
@@ -205,7 +201,7 @@ export default function CreateTicket() {
       mediaRecorderRef.current.start();
       setIsRecording(true);
     } catch (err) {
-      alert("Erreur d'accès au microphone: " + err.message);
+      console.error('Erreur microphone:', err);
     }
   };
 
@@ -237,22 +233,22 @@ export default function CreateTicket() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!category) return alert("Veuillez sélectionner une catégorie.");
-    if (!locationType) return alert("Veuillez sélectionner le type de localisation.");
+    if (!category) return;
+    if (!locationType) return;
     
     // Validation selon le type de local
     if (locationType === "building" && (!selectedLocal || !roomNumber)) {
-      return alert("Veuillez sélectionner un bâtiment et saisir le numéro de chambre.");
+      return;
     }
     if (locationType === "common_area" && !selectedLocal) {
-      return alert("Veuillez sélectionner un espace commun.");
+      return;
     }
     if (locationType === "other" && !otherLocation.trim()) {
-      return alert("Veuillez décrire la localisation.");
+      return;
     }
     
     if (ticketType === "planifier" && (!scheduledDate || !scheduledTime)) {
-      return alert("Veuillez préciser la date et l'heure pour une intervention planifiée.");
+      return;
     }
 
     setLoading(true);
@@ -315,10 +311,9 @@ export default function CreateTicket() {
 
       await createTicket(ticketData);
 
-      alert("Ticket créé avec succès !");
       navigate('/app/student');
     } catch (err) {
-      alert("Erreur: " + err.message);
+      console.error('Erreur création ticket:', err);
     } finally {
       setLoading(false);
     }

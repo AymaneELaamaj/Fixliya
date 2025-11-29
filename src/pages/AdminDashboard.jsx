@@ -109,13 +109,20 @@ export default function AdminDashboard() {
     if (!artisanId) return;
     const selectedArtisan = artisans.find(a => a.id === artisanId);
     if (!selectedArtisan) return;
-    if (window.confirm(`Assigner ce ticket à ${selectedArtisan.prenom} ?`)) {
-      try {
-        await actions.assignTicket(ticketId, artisanId);
-        alert('Ticket assigné avec succès !');
-      } catch (err) {
-        alert(err.message);
-      }
+    try {
+      await actions.assignTicket(ticketId, artisanId);
+    } catch (err) {
+      console.error('Erreur assignation:', err);
+      // Afficher un message visuel pour l'utilisateur
+      const errorMsg = err.message?.includes('réseau') || err.message?.includes('offline') 
+        ? '❌ Erreur réseau - Vérifiez votre connexion'
+        : '❌ Erreur lors de l\'assignation';
+      // Créer une notification visuelle temporaire
+      const notification = document.createElement('div');
+      notification.style.cssText = 'position:fixed;top:20px;right:20px;background:#ef4444;color:white;padding:15px 20px;border-radius:8px;z-index:9999;font-weight:bold;box-shadow:0 4px 12px rgba(0,0,0,0.3)';
+      notification.textContent = errorMsg;
+      document.body.appendChild(notification);
+      setTimeout(() => notification.remove(), 4000);
     }
   }, [artisans, actions]);
 
@@ -124,11 +131,10 @@ export default function AdminDashboard() {
   const handleExternalizeTicket = useCallback(async (providerId) => {
     if (!externalizeModal.ticket) return;
     try {
-      const provider = await actions.externalizeTicket(externalizeModal.ticket.id, providerId);
-      alert(`Ticket externalisé avec succès à ${provider.name} !`);
+      await actions.externalizeTicket(externalizeModal.ticket.id, providerId);
       handleCloseExternalizeModal();
     } catch (err) {
-      alert('Erreur: ' + err.message);
+      console.error('Erreur externalisation:', err);
     }
   }, [externalizeModal.ticket, actions, handleCloseExternalizeModal]);
 

@@ -269,13 +269,17 @@ function AssignmentCell({ ticket, artisans, onAssign }) {
     );
   }
 
-  if (ticket.assignedToName) {
-    return <strong style={{ color: '#059669' }}>✓ {ticket.assignedToName}</strong>;
-  }
-
+  // Permettre la réassignation même si déjà assigné
   return (
-    <select onChange={onAssign} className={styles.selectSmall} defaultValue="">
-      <option value="" disabled>Assigner...</option>
+    <select 
+      onChange={onAssign} 
+      className={styles.selectSmall} 
+      value={ticket.assignedToId || ""}
+      style={ticket.assignedToName ? { color: '#059669', fontWeight: 'bold' } : {}}
+    >
+      <option value="" disabled>
+        {ticket.assignedToName ? `✓ ${ticket.assignedToName}` : 'Assigner...'}
+      </option>
       {artisans.map(artisan => (
         <option key={artisan.id} value={artisan.id}>
           {artisan.prenom} ({artisan.specialite})
@@ -393,17 +397,19 @@ function MobileTicketCard({ ticket, artisans, onAssign, onExternalize }) {
       {/* Actions */}
       {!isCompleted && (
         <div className={styles.mobileCardActions}>
-          {!isExternalized && !ticket.assignedToName && (
+          {!isExternalized && (
             <select 
               onChange={handleAssign} 
-              defaultValue=""
+              value={ticket.assignedToId || ""}
               style={{
-                backgroundColor: '#005596',
+                backgroundColor: ticket.assignedToName ? '#059669' : '#005596',
                 color: 'white',
                 fontWeight: '600'
               }}
             >
-              <option value="" disabled>👨‍🔧 Assigner à un artisan...</option>
+              <option value="" disabled>
+                {ticket.assignedToName ? `✓ ${ticket.assignedToName}` : '👨‍🔧 Assigner à un artisan...'}
+              </option>
               {artisans.map(artisan => (
                 <option key={artisan.id} value={artisan.id}>
                   {artisan.prenom} ({artisan.specialite})

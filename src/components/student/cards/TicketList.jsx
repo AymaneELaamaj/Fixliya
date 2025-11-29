@@ -1,5 +1,5 @@
 import React from 'react';
-import { TicketCard } from './TicketCard';
+import TicketCard from './TicketCard';
 
 /**
  * Liste des tickets de l'étudiant

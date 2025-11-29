@@ -169,3 +169,62 @@ export const cancelTicket = async (ticketId, reason = "") => {
     throw error;
   }
 };
+
+/**
+ * Archiver un ticket
+ * Seuls les tickets terminés ou annulés peuvent être archivés
+ */
+export const archiveTicket = async (ticketId, studentId) => {
+  try {
+    const ticketRef = doc(db, "tickets", ticketId);
+    
+    await updateDoc(ticketRef, {
+      archived: true,
+      archivedAt: new Date().toISOString(),
+      archivedBy: studentId
+    });
+  } catch (error) {
+    console.error("Erreur archivage ticket:", error);
+    throw error;
+  }
+};
+
+/**
+ * Désarchiver un ticket
+ */
+export const unarchiveTicket = async (ticketId) => {
+  try {
+    const ticketRef = doc(db, "tickets", ticketId);
+    
+    await updateDoc(ticketRef, {
+      archived: false,
+      unarchivedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error("Erreur désarchivage ticket:", error);
+    throw error;
+  }
+};
+
+/**
+ * Récupérer les tickets archivés d'un étudiant
+ */
+export const getArchivedTickets = async (studentId) => {
+  try {
+    const q = query(
+      collection(db, "tickets"),
+      where("studentId", "==", studentId),
+      where("archived", "==", true)
+    );
+
+    const snapshot = await getDocs(q);
+    
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  } catch (error) {
+    console.error("Erreur récupération tickets archivés:", error);
+    return [];
+  }
+};
