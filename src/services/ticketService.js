@@ -119,6 +119,9 @@ export const createTicket = async (ticketData) => {
     if (ticketData.imageUrl) {
       newTicket.imageUrl = ticketData.imageUrl;
     }
+    if (ticketData.imageUrls && ticketData.imageUrls.length > 0) {
+      newTicket.imageUrls = ticketData.imageUrls;
+    }
     if (ticketData.audioUrl) {
       newTicket.audioUrl = ticketData.audioUrl;
     }

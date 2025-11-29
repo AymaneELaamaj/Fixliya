@@ -1,20 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { auth, db } from '../firebase';
+import { auth, db, storage } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { createTicket } from '../services/ticketService';
 
 export default function CreateTicket() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  
+
   // États
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [ticketType, setTicketType] = useState("urgent"); // "urgent" ou "planifier"
   const [scheduledDate, setScheduledDate] = useState("");
   const [scheduledTime, setScheduledTime] = useState("");
-  const [imageFile, setImageFile] = useState(null);
+  const [photos, setPhotos] = useState([]); // Array de photos (max 3)
+  const [isCameraActive, setIsCameraActive] = useState(false); // État de la caméra
   const [audioFile, setAudioFile] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
   const [locationType, setLocationType] = useState(""); // "batiment" ou "commun"
@@ -30,6 +32,7 @@ export default function CreateTicket() {
   const canvasRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
+  const streamRef = useRef(null); // Pour garder une référence au stream de la caméra
 
   // Catégories (Sec 2.2) [cite: 22]
   const categories = ["Plomberie", "Électricité", "Ménage", "Wifi", "Autre"];
@@ -52,36 +55,112 @@ export default function CreateTicket() {
     fetchUser();
   }, []);
 
+  // Nettoyer les URLs de prévisualisation à la fin
+  useEffect(() => {
+    return () => {
+      photos.forEach(photo => {
+        if (photo.preview) {
+          URL.revokeObjectURL(photo.preview);
+        }
+      });
+    };
+  }, [photos]);
+
   // Démarrer la caméra
   const startCamera = async () => {
+    if (photos.length >= 3) {
+      alert("Vous avez déjà atteint le maximum de 3 photos");
+      return;
+    }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: "environment",
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      });
+      streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        // Forcer la lecture de la vidéo
+        try {
+          await videoRef.current.play();
+        } catch (playError) {
+          console.log("Lecture automatique:", playError);
+        }
+        setIsCameraActive(true);
       }
     } catch (err) {
+      console.error("Erreur caméra:", err);
       alert("Erreur d'accès à la caméra: " + err.message);
     }
   };
 
   // Prendre une photo
   const capturePhoto = () => {
+    if (photos.length >= 3) {
+      alert("Maximum 3 photos atteintes");
+      return;
+    }
     if (videoRef.current && canvasRef.current) {
       const context = canvasRef.current.getContext('2d');
       context.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
       canvasRef.current.toBlob((blob) => {
-        setImageFile(blob);
-        alert("Photo capturée avec succès!");
+        const previewUrl = URL.createObjectURL(blob);
+        const newPhoto = {
+          file: blob,
+          preview: previewUrl,
+          source: 'camera'
+        };
+        setPhotos([...photos, newPhoto]);
+        // Arrêter la caméra après la capture
+        stopCamera();
       });
     }
   };
 
   // Arrêter la caméra
   const stopCamera = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      const tracks = videoRef.current.srcObject.getTracks();
-      tracks.forEach(track => track.stop());
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
     }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setIsCameraActive(false);
+  };
+
+  // Supprimer une photo
+  const deletePhoto = (index) => {
+    const photoToDelete = photos[index];
+    if (photoToDelete.preview) {
+      URL.revokeObjectURL(photoToDelete.preview);
+    }
+    const newPhotos = photos.filter((_, i) => i !== index);
+    setPhotos(newPhotos);
+  };
+
+  // Ajouter des photos depuis fichier
+  const handleFileUpload = (e) => {
+    const files = Array.from(e.target.files);
+    const remainingSlots = 3 - photos.length;
+
+    if (files.length > remainingSlots) {
+      alert(`Vous pouvez ajouter seulement ${remainingSlots} photo(s) de plus`);
+      return;
+    }
+
+    const newPhotos = files.map(file => ({
+      file: file,
+      preview: URL.createObjectURL(file),
+      source: 'upload'
+    }));
+
+    setPhotos([...photos, ...newPhotos]);
+    // Réinitialiser l'input
+    e.target.value = '';
   };
 
   // Démarrer l'enregistrement audio
@@ -157,6 +236,26 @@ export default function CreateTicket() {
         location = `Local commun: ${commonAreaName}`;
       }
 
+      // Upload des photos si présentes
+      let imageUrls = [];
+      if (photos.length > 0) {
+        for (let i = 0; i < photos.length; i++) {
+          const photo = photos[i];
+          const imageRef = ref(storage, `tickets/${auth.currentUser.uid}/${Date.now()}_photo_${i}.jpg`);
+          await uploadBytes(imageRef, photo.file);
+          const url = await getDownloadURL(imageRef);
+          imageUrls.push(url);
+        }
+      }
+
+      // Upload de l'audio si présent
+      let audioUrl = null;
+      if (audioFile) {
+        const audioRef = ref(storage, `tickets/${auth.currentUser.uid}/${Date.now()}_audio.mp3`);
+        await uploadBytes(audioRef, audioFile);
+        audioUrl = await getDownloadURL(audioRef);
+      }
+
       const ticketData = {
         studentId: auth.currentUser.uid,
         studentName: userData ? `${userData.prenom} ${userData.nom}` : "Étudiant",
@@ -171,13 +270,15 @@ export default function CreateTicket() {
         ticketType: ticketType,
         scheduledDate: ticketType === "planifier" ? scheduledDate : null,
         scheduledTime: ticketType === "planifier" ? scheduledTime : null,
-        scheduledDateTime: ticketType === "planifier" ? `${scheduledDate} ${scheduledTime}` : null
+        scheduledDateTime: ticketType === "planifier" ? `${scheduledDate} ${scheduledTime}` : null,
+        imageUrls: imageUrls, // Array d'URLs
+        audioUrl: audioUrl
       };
 
       await createTicket(ticketData);
-      
+
       alert("Ticket créé avec succès !");
-      navigate('/app/student'); 
+      navigate('/app/student');
     } catch (err) {
       alert("Erreur: " + err.message);
     } finally {
@@ -360,27 +461,84 @@ export default function CreateTicket() {
             required
           />
 
-          {/* Section Caméra en temps réel */}
+          {/* Section Photos */}
           <div style={styles.mediaSection}>
-            <h3 style={styles.mediaTitle}>📷 Photo en temps réel</h3>
-            <video 
-              ref={videoRef} 
-              autoPlay 
-              playsInline
-              style={styles.video}
-            />
-            <canvas 
-              ref={canvasRef} 
-              width={640}
-              height={480}
-              style={{display: 'none'}}
-            />
-            <div style={styles.mediaButtons}>
-              <button type="button" onClick={startCamera} style={styles.mediaBtn}>Démarrer Caméra</button>
-              <button type="button" onClick={capturePhoto} style={styles.mediaBtn}>📸 Prendre Photo</button>
-              <button type="button" onClick={stopCamera} style={styles.mediaBtn}>Arrêter Caméra</button>
-            </div>
-            {imageFile && <p style={styles.successText}>✓ Photo capturée</p>}
+            <h3 style={styles.mediaTitle}>📷 Photos du problème (max 3)</h3>
+
+            {/* Afficher la caméra si active */}
+            {isCameraActive && (
+              <div style={styles.cameraContainer}>
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  style={styles.video}
+                />
+                <canvas
+                  ref={canvasRef}
+                  width={1280}
+                  height={720}
+                  style={{display: 'none'}}
+                />
+                <div style={styles.mediaButtons}>
+                  <button type="button" onClick={capturePhoto} style={styles.captureBtn}>
+                    📸 Capturer
+                  </button>
+                  <button type="button" onClick={stopCamera} style={styles.cancelBtn}>
+                    ✖️ Annuler
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Afficher les photos capturées */}
+            {photos.length > 0 && (
+              <div style={styles.photosGrid}>
+                {photos.map((photo, index) => (
+                  <div key={index} style={styles.photoItem}>
+                    <img src={photo.preview} alt={`Photo ${index + 1}`} style={styles.photoThumb} />
+                    <button
+                      type="button"
+                      onClick={() => deletePhoto(index)}
+                      style={styles.photoDeleteBtn}
+                    >
+                      ✖️
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Boutons d'action si pas de caméra active */}
+            {!isCameraActive && photos.length < 3 && (
+              <div style={styles.photoActions}>
+                <button type="button" onClick={startCamera} style={styles.primaryBtn}>
+                  📸 Prendre une photo
+                </button>
+                <label htmlFor="file-upload" style={styles.uploadBtn}>
+                  📁 Choisir des fichiers
+                </label>
+                <input
+                  id="file-upload"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleFileUpload}
+                  style={{display: 'none'}}
+                />
+              </div>
+            )}
+
+            {photos.length === 0 && !isCameraActive && (
+              <p style={styles.photoPlaceholderText}>Aucune photo ajoutée</p>
+            )}
+
+            {photos.length > 0 && (
+              <p style={styles.successText}>
+                ✓ {photos.length} photo(s) ajoutée(s) ({3 - photos.length} restante(s))
+              </p>
+            )}
           </div>
 
           {/* Section Audio */}
@@ -423,15 +581,6 @@ export default function CreateTicket() {
               </>
             )}
           </div>
-
-          {/* Photo (Fichier) - Optionnel */}
-          <label style={styles.label}>📁 Ou télécharger une image :</label>
-          <input 
-            type="file" 
-            accept="image/*" 
-            onChange={(e) => setImageFile(e.target.files[0])}
-            style={styles.input}
-          />
 
           <button type="submit" style={styles.submitBtn} disabled={loading}>
             {loading ? "Envoi en cours..." : "Signaler le problème"}
@@ -477,11 +626,23 @@ const styles = {
   input: { padding: '10px' },
   mediaSection: { backgroundColor: '#f9fafb', padding: '15px', borderRadius: '8px', border: '1px solid #e5e7eb' },
   mediaTitle: { margin: '0 0 10px 0', color: '#005596', fontSize: '16px', fontWeight: 'bold' },
-  video: { width: '100%', height: 'auto', borderRadius: '8px', marginBottom: '10px', backgroundColor: '#000' },
+  cameraContainer: { marginBottom: '15px' },
+  video: { width: '100%', maxHeight: '400px', borderRadius: '8px', marginBottom: '10px', backgroundColor: '#000', display: 'block', objectFit: 'cover' },
   audioPlayer: { backgroundColor: 'white', padding: '12px', borderRadius: '6px', border: '1px solid #ddd', marginBottom: '10px' },
   audioControls: { width: '100%', height: '32px' },
   mediaButtons: { display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' },
   mediaBtn: { padding: '10px 12px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer', fontWeight: 'bold', flex: '1', minWidth: '100px' },
   successText: { color: '#16a34a', fontWeight: 'bold', fontSize: '13px', margin: '5px 0 0 0' },
-  submitBtn: { padding: '15px', backgroundColor: '#005596', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer' }
+  submitBtn: { padding: '15px', backgroundColor: '#005596', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer' },
+  // Nouveaux styles pour les photos
+  photoPlaceholderText: { color: '#6b7280', fontSize: '14px', margin: '10px 0', textAlign: 'center' },
+  primaryBtn: { padding: '12px 24px', backgroundColor: '#005596', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease', flex: 1 },
+  captureBtn: { padding: '12px 24px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', flex: '1', minWidth: '120px' },
+  cancelBtn: { padding: '12px 24px', backgroundColor: '#6b7280', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', flex: '1', minWidth: '120px' },
+  photosGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '15px' },
+  photoItem: { position: 'relative', aspectRatio: '1', borderRadius: '8px', overflow: 'hidden', border: '2px solid #e5e7eb' },
+  photoThumb: { width: '100%', height: '100%', objectFit: 'cover' },
+  photoDeleteBtn: { position: 'absolute', top: '5px', right: '5px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  photoActions: { display: 'flex', gap: '10px', marginBottom: '10px' },
+  uploadBtn: { padding: '12px 24px', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease', flex: 1, textAlign: 'center', display: 'inline-block' }
 };
