@@ -4,6 +4,7 @@ import { auth, db, storage } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { createTicket } from '../services/ticketService';
+import { LOCAL_TYPES } from '../services/localService';
 
 export default function CreateTicket() {
   const navigate = useNavigate();
@@ -19,10 +20,12 @@ export default function CreateTicket() {
   const [isCameraActive, setIsCameraActive] = useState(false); // État de la caméra
   const [audioFile, setAudioFile] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
-  const [locationType, setLocationType] = useState(""); // "batiment" ou "commun"
-  const [building, setBuilding] = useState("");
-  const [roomNumber, setRoomNumber] = useState("");
-  const [commonAreaName, setCommonAreaName] = useState("");
+  const [locationType, setLocationType] = useState(""); // "building" ou "common_area" ou "other"
+  const [selectedLocal, setSelectedLocal] = useState(null); // Local sélectionné
+  const [roomNumber, setRoomNumber] = useState(""); // Pour les bâtiments
+  const [otherLocation, setOtherLocation] = useState(""); // Pour "Autre"
+  const [buildings, setBuildings] = useState([]); // Bâtiments
+  const [commonAreas, setCommonAreas] = useState([]); // Espaces communs
   const [isAccountDisabled, setIsAccountDisabled] = useState(false); // Compte désactivé
 
   const [userData, setUserData] = useState(null);
@@ -53,6 +56,26 @@ export default function CreateTicket() {
       }
     };
     fetchUser();
+  }, []);
+
+  // Charger les locaux disponibles
+  useEffect(() => {
+    const fetchLocals = async () => {
+      try {
+        const { getAllLocals } = await import('../services/localService');
+        const locals = await getAllLocals();
+        
+        // Séparer bâtiments et espaces communs
+        const buildingsList = locals.filter(local => local.type === LOCAL_TYPES.BUILDING && local.isActive);
+        const commonAreasList = locals.filter(local => local.type === LOCAL_TYPES.COMMON_AREA && local.isActive);
+        
+        setBuildings(buildingsList);
+        setCommonAreas(commonAreasList);
+      } catch (error) {
+        console.error("Erreur chargement locaux:", error);
+      }
+    };
+    fetchLocals();
   }, []);
 
   // Nettoyer les URLs de prévisualisation à la fin
@@ -216,12 +239,18 @@ export default function CreateTicket() {
     e.preventDefault();
     if (!category) return alert("Veuillez sélectionner une catégorie.");
     if (!locationType) return alert("Veuillez sélectionner le type de localisation.");
-    if (locationType === "batiment" && (!building || !roomNumber)) {
-      return alert("Veuillez remplir le bâtiment et le numéro de chambre.");
+    
+    // Validation selon le type de local
+    if (locationType === "building" && (!selectedLocal || !roomNumber)) {
+      return alert("Veuillez sélectionner un bâtiment et saisir le numéro de chambre.");
     }
-    if (locationType === "commun" && !commonAreaName) {
-      return alert("Veuillez renseigner le nom du local commun.");
+    if (locationType === "common_area" && !selectedLocal) {
+      return alert("Veuillez sélectionner un espace commun.");
     }
+    if (locationType === "other" && !otherLocation.trim()) {
+      return alert("Veuillez décrire la localisation.");
+    }
+    
     if (ticketType === "planifier" && (!scheduledDate || !scheduledTime)) {
       return alert("Veuillez préciser la date et l'heure pour une intervention planifiée.");
     }
@@ -230,10 +259,19 @@ export default function CreateTicket() {
     try {
       // Déterminer la localisation selon le type
       let location = "";
-      if (locationType === "batiment") {
-        location = `Bâtiment ${building} - Chambre ${roomNumber}`;
-      } else {
-        location = `Local commun: ${commonAreaName}`;
+      let localId = null;
+      let localName = null;
+      
+      if (locationType === "building" && selectedLocal) {
+        location = `${selectedLocal.name} - Chambre ${roomNumber}`;
+        localId = selectedLocal.id;
+        localName = selectedLocal.name;
+      } else if (locationType === "common_area" && selectedLocal) {
+        location = selectedLocal.name;
+        localId = selectedLocal.id;
+        localName = selectedLocal.name;
+      } else if (locationType === "other") {
+        location = otherLocation.trim();
       }
 
       // Upload des photos si présentes
@@ -260,12 +298,12 @@ export default function CreateTicket() {
         studentId: auth.currentUser.uid,
         studentName: userData ? `${userData.prenom} ${userData.nom}` : "Étudiant",
         location: location,
+        localId: localId, // ID du local (null si "autre")
+        localName: localName, // Nom du local (null si "autre")
         category,
         description,
         locationType: locationType,
-        building: locationType === "batiment" ? building : null,
-        roomNumber: locationType === "batiment" ? roomNumber : null,
-        commonAreaName: locationType === "commun" ? commonAreaName : null,
+        roomNumber: locationType === "building" ? roomNumber : null,
         isUrgent: ticketType === "urgent",
         ticketType: ticketType,
         scheduledDate: ticketType === "planifier" ? scheduledDate : null,
@@ -333,50 +371,64 @@ export default function CreateTicket() {
             <button
               type="button"
               onClick={() => {
-                setLocationType("batiment");
-                setCommonAreaName("");
+                setLocationType("building");
+                setSelectedLocal(null);
+                setOtherLocation("");
               }}
-              style={locationType === "batiment" ? styles.locationButtonActive : styles.locationButton}
+              style={locationType === "building" ? styles.locationButtonActive : styles.locationButton}
             >
-              🏢 Bâtiment/Chambre
+              🏢 Bâtiment
             </button>
             <button
               type="button"
               onClick={() => {
-                setLocationType("commun");
-                setBuilding("");
+                setLocationType("common_area");
+                setSelectedLocal(null);
+                setRoomNumber("");
+                setOtherLocation("");
+              }}
+              style={locationType === "common_area" ? styles.locationButtonActive : styles.locationButton}
+            >
+              🏛️ Espace Commun
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setLocationType("other");
+                setSelectedLocal(null);
                 setRoomNumber("");
               }}
-              style={locationType === "commun" ? styles.locationButtonActive : styles.locationButton}
+              style={locationType === "other" ? styles.locationButtonActive : styles.locationButton}
             >
-              🏛️ Local Commun
+              📝 Autre
             </button>
           </div>
 
           {/* Champs pour Bâtiment */}
-          {locationType === "batiment" && (
+          {locationType === "building" && (
             <div style={styles.locationSection}>
-              <div style={styles.row}>
+              <div style={styles.inputGroup}>
+                <label style={styles.smallLabel}>Sélectionner le Bâtiment :</label>
+                <select 
+                  value={selectedLocal?.id || ""} 
+                  onChange={(e) => {
+                    const local = buildings.find(b => b.id === e.target.value);
+                    setSelectedLocal(local || null);
+                  }}
+                  style={styles.select}
+                  required
+                >
+                  <option value="">-- Choisir un bâtiment --</option>
+                  {buildings.map(building => (
+                    <option key={building.id} value={building.id}>
+                      {building.name} ({building.totalRooms} chambres)
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {selectedLocal && (
                 <div style={styles.inputGroup}>
-                  <label style={styles.smallLabel}>Bâtiment :</label>
-                  <select 
-                    value={building} 
-                    onChange={(e) => setBuilding(e.target.value)}
-                    style={styles.select}
-                    required
-                  >
-                    <option value="">Sélectionner...</option>
-                    <option value="A">A</option>
-                    <option value="B">B</option>
-                    <option value="C">C</option>
-                    <option value="D">D</option>
-                    <option value="E">E</option>
-                    <option value="F">F</option>
-                    <option value="G">G</option>
-                  </select>
-                </div>
-                <div style={styles.inputGroup}>
-                  <label style={styles.smallLabel}>Numéro Chambre :</label>
+                  <label style={styles.smallLabel}>Numéro de Chambre :</label>
                   <input 
                     type="text" 
                     placeholder="Ex: 101, 205..." 
@@ -385,23 +437,57 @@ export default function CreateTicket() {
                     style={styles.selectInput}
                     required
                   />
+                  <small style={styles.helpText}>
+                    Chambres disponibles: 1 à {selectedLocal.totalRooms}
+                  </small>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
-          {/* Champs pour Local Commun */}
-          {locationType === "commun" && (
+          {/* Champs pour Espace Commun */}
+          {locationType === "common_area" && (
             <div style={styles.locationSection}>
-              <label style={styles.smallLabel}>Nom du Local Commun :</label>
+              <label style={styles.smallLabel}>Sélectionner l'Espace Commun :</label>
+              <select 
+                value={selectedLocal?.id || ""} 
+                onChange={(e) => {
+                  const local = commonAreas.find(c => c.id === e.target.value);
+                  setSelectedLocal(local || null);
+                }}
+                style={styles.select}
+                required
+              >
+                <option value="">-- Choisir un espace --</option>
+                {commonAreas.map(area => (
+                  <option key={area.id} value={area.id}>
+                    {area.name} {area.category && `(${area.category})`}
+                  </option>
+                ))}
+              </select>
+              {commonAreas.length === 0 && (
+                <p style={styles.noDataText}>
+                  ℹ️ Aucun espace commun disponible. Utilisez "Autre" pour décrire la localisation.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Champs pour Autre localisation */}
+          {locationType === "other" && (
+            <div style={styles.locationSection}>
+              <label style={styles.smallLabel}>Décrire la Localisation :</label>
               <input 
                 type="text" 
-                placeholder="Ex: Salle de réunion, Cuisine, Bibliothèque..." 
-                value={commonAreaName} 
-                onChange={(e) => setCommonAreaName(e.target.value)}
+                placeholder="Ex: Près de l'entrée principale, Couloir du 2ème étage..." 
+                value={otherLocation} 
+                onChange={(e) => setOtherLocation(e.target.value)}
                 style={styles.selectInput}
                 required
               />
+              <small style={styles.helpText}>
+                Soyez le plus précis possible pour faciliter l'intervention
+              </small>
             </div>
           )}
 
@@ -606,7 +692,7 @@ const styles = {
   label: { fontWeight: 'bold', fontSize: '14px', color: '#333' },
   smallLabel: { fontWeight: 'bold', fontSize: '13px', color: '#333', marginBottom: '5px', display: 'block' },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' },
-  locationGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' },
+  locationGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' },
   catButton: { padding: '10px', border: '1px solid #ddd', borderRadius: '8px', background: 'white', cursor: 'pointer' },
   catButtonActive: { padding: '10px', border: '2px solid #005596', borderRadius: '8px', background: '#e6f0fa', color: '#005596', fontWeight: 'bold', cursor: 'pointer' },
   locationButton: { padding: '12px', border: '1px solid #ddd', borderRadius: '8px', background: 'white', cursor: 'pointer', fontSize: '13px', fontWeight: '500' },
@@ -644,5 +730,8 @@ const styles = {
   photoThumb: { width: '100%', height: '100%', objectFit: 'cover' },
   photoDeleteBtn: { position: 'absolute', top: '5px', right: '5px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   photoActions: { display: 'flex', gap: '10px', marginBottom: '10px' },
-  uploadBtn: { padding: '12px 24px', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease', flex: 1, textAlign: 'center', display: 'inline-block' }
+  uploadBtn: { padding: '12px 24px', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease', flex: 1, textAlign: 'center', display: 'inline-block' },
+  // Nouveaux styles pour le système de locaux
+  helpText: { display: 'block', fontSize: '12px', color: '#666', marginTop: '5px', fontStyle: 'italic' },
+  noDataText: { color: '#f59e0b', fontSize: '13px', margin: '10px 0', padding: '10px', backgroundColor: '#fff7ed', borderRadius: '6px', border: '1px solid #fed7aa' }
 };

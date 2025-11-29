@@ -1,21 +1,81 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTicketFilters } from '../../../hooks/admin/useTicketFilters';
 import { getStatusBadgeClass, getStatusLabel } from '../utils/statusHelpers';
 import styles from '../styles/AdminDashboard.module.css';
 
 export default function TicketsTab({ tickets, artisans, onAssign, onExternalize }) {
+  const [locals, setLocals] = useState([]);
+  const [selectedLocalFilter, setSelectedLocalFilter] = useState('all');
+  
   const {
     filters,
-    filteredTickets,
+    filteredTickets: baseFilteredTickets,
     categories,
     updateFilter,
     ticketCount
   } = useTicketFilters(tickets);
 
+  // Charger les locaux pour le filtre
+  useEffect(() => {
+    const fetchLocals = async () => {
+      try {
+        const { getAllLocals } = await import('../../../services/localService');
+        const allLocals = await getAllLocals();
+        setLocals(allLocals.filter(local => local.isActive));
+      } catch (error) {
+        console.error("Erreur chargement locaux:", error);
+      }
+    };
+    fetchLocals();
+  }, []);
+
+  // Filtrage supplémentaire par local
+  const filteredTickets = useMemo(() => {
+    if (selectedLocalFilter === 'all') {
+      return baseFilteredTickets;
+    }
+    
+    // Filtrer par localId si le ticket a cette propriété
+    return baseFilteredTickets.filter(ticket => {
+      if (ticket.localId) {
+        return ticket.localId === selectedLocalFilter;
+      }
+      // Sinon, filtrer par nom de local dans la location
+      const selectedLocal = locals.find(l => l.id === selectedLocalFilter);
+      if (selectedLocal && ticket.location) {
+        return ticket.location.includes(selectedLocal.name);
+      }
+      return false;
+    });
+  }, [baseFilteredTickets, selectedLocalFilter, locals]);
+
   return (
     <div className={styles.section}>
       {/* Filter Bar */}
       <div className={styles.filterBar}>
+        {/* Filtre par Local */}
+        <select
+          value={selectedLocalFilter}
+          onChange={(e) => setSelectedLocalFilter(e.target.value)}
+          className={styles.filterSelect}
+        >
+          <option value="all">🏢 Tous les locaux</option>
+          <optgroup label="Bâtiments">
+            {locals.filter(l => l.type === 'building').map(local => (
+              <option key={local.id} value={local.id}>
+                {local.name}
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label="Espaces Communs">
+            {locals.filter(l => l.type === 'common_area').map(local => (
+              <option key={local.id} value={local.id}>
+                {local.name}
+              </option>
+            ))}
+          </optgroup>
+        </select>
+
         <select
           value={filters.status}
           onChange={(e) => updateFilter('status', e.target.value)}

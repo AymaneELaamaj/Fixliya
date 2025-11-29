@@ -4,6 +4,7 @@ import styles from '../styles/AdminDashboard.module.css';
 const TABS = [
   { id: 'tickets', label: '📋 Gérer les Tickets', icon: '📋' },
   { id: 'artisans', label: '👨‍🔧 Gérer les Artisans', icon: '👨‍🔧' },
+  { id: 'locals', label: '🏢 Gérer les Locaux', icon: '🏢' },
   { id: 'statistics', label: '📊 Statistiques & Rapports', icon: '📊' },
   { id: 'students', label: '👨‍🎓 Gestion Étudiants', icon: '👨‍🎓' }
 ];

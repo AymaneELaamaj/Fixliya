@@ -11,6 +11,7 @@ import TicketsTab from '../components/admin/tabs/TicketsTab';
 import ArtisansTab from '../components/admin/tabs/ArtisansTab';
 import StudentsTab from '../components/admin/tabs/StudentsTab';
 import StatisticsTab from '../components/admin/tabs/StatisticsTab';
+import LocalsTab from '../components/admin/tabs/LocalsTab';
 import ExternalizeModal from '../components/admin/modals/ExternalizeModal';
 import BuildingView from '../components/admin/BuildingView'; // Votre composant 2D
 
@@ -21,7 +22,8 @@ const TAB_TITLES = {
   tickets: '📋 Gestion des Tickets',
   artisans: '👨‍🔧 Gestion des Artisans',
   statistics: '📊 Statistiques & Rapports',
-  students: '👨‍🎓 Gestion des Étudiants'
+  students: '👨‍🎓 Gestion des Étudiants',
+  locals: '🏢 Gestion des Locaux'
 };
 
 export default function AdminDashboard() {
@@ -226,6 +228,8 @@ export default function AdminDashboard() {
           <ArtisansTab artisans={artisans} onUpdate={actions.updateArtisan} onDelete={actions.deleteArtisan} onCreate={actions.createArtisan} />
         ) : activeTab === 'students' ? (
           <StudentsTab students={students} onToggleStatus={actions.toggleStudentStatus} />
+        ) : activeTab === 'locals' ? (
+          <LocalsTab />
         ) : (
           <StatisticsTab statistics={statistics} />
         )}
@@ -247,6 +251,13 @@ export default function AdminDashboard() {
         >
           👨‍🔧
           <span>Artisans</span>
+        </button>
+        <button 
+          className={`${styles.bottomNavButton} ${activeTab === 'locals' ? styles.active : ''}`}
+          onClick={() => setActiveTab('locals')}
+        >
+          🏢
+          <span>Locaux</span>
         </button>
         <button 
           className={`${styles.bottomNavButton} ${activeTab === 'statistics' ? styles.active : ''}`}
