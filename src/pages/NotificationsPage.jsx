@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStudentData, useNotifications } from '../hooks/students';
 import { StudentSidebar } from '../components/student';
@@ -10,6 +10,17 @@ export default function NotificationsPage() {
   const navigate = useNavigate();
   const { userName, userId, loading } = useStudentData();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications(userId);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  // Détection du mode mobile
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleNotificationClick = async (notification) => {
     if (!notification.read) {
@@ -35,17 +46,35 @@ export default function NotificationsPage() {
         unreadNotifications={unreadCount}
       />
 
-      <div style={styles.mainContent}>
+      <div style={{
+        ...styles.mainContent,
+        marginLeft: isMobile ? 0 : '260px',
+        padding: isMobile ? '16px' : '24px',
+        paddingTop: isMobile ? '70px' : '24px'
+      }}>
         {/* En-tête */}
-        <div style={styles.header}>
+        <div style={{
+          ...styles.header,
+          flexDirection: isMobile ? 'column' : 'row',
+          alignItems: isMobile ? 'stretch' : 'center'
+        }}>
           <div>
-            <h1 style={styles.title}>🔔 Notifications</h1>
+            <h1 style={{
+              ...styles.title,
+              fontSize: isMobile ? '22px' : '28px'
+            }}>🔔 Notifications</h1>
             <p style={styles.subtitle}>
               {unreadCount > 0 ? `${unreadCount} non lue(s)` : 'Toutes les notifications sont lues'}
             </p>
           </div>
           {unreadCount > 0 && (
-            <button onClick={handleMarkAllAsRead} style={styles.markAllBtn}>
+            <button 
+              onClick={handleMarkAllAsRead} 
+              style={{
+                ...styles.markAllBtn,
+                width: isMobile ? '100%' : 'auto'
+              }}
+            >
               ✓ Tout marquer comme lu
             </button>
           )}
@@ -145,8 +174,6 @@ const styles = {
   },
   mainContent: {
     flex: 1,
-    marginLeft: '260px',
-    padding: '24px',
     transition: 'margin-left 0.3s ease',
   },
   loading: {
@@ -160,13 +187,10 @@ const styles = {
   header: {
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: '24px',
-    flexWrap: 'wrap',
     gap: '16px',
   },
   title: {
-    fontSize: '28px',
     fontWeight: '600',
     color: '#1a1a1a',
     margin: 0,

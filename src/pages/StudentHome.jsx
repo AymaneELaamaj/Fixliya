@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { logoutUser } from '../services/authService';
 
@@ -28,6 +28,17 @@ import TicketSection from '../components/student/sections/TicketSection';
 export default function StudentDashboard() {
   const navigate = useNavigate();
   const [showArchived, setShowArchived] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  // Détection du mode mobile
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Chargement des données
   const { tickets, userName, userId, loading, isAccountDisabled, loadData } = useStudentData();
@@ -125,18 +136,33 @@ export default function StudentDashboard() {
       />
 
       {/* Contenu principal */}
-      <div style={styles.mainContent}>
+      <div style={{
+        ...styles.mainContent,
+        marginLeft: isMobile ? 0 : '260px',
+        padding: isMobile ? '16px' : '24px',
+        paddingTop: isMobile ? '70px' : '24px' // Espace pour le bouton hamburger
+      }}>
         {/* En-tête avec bouton nouvelle réclamation */}
-        <div style={styles.header}>
+        <div style={{
+          ...styles.header,
+          flexDirection: isMobile ? 'column' : 'row',
+          alignItems: isMobile ? 'stretch' : 'center'
+        }}>
           <div>
-            <h1 style={styles.title}>Mes Réclamations</h1>
+            <h1 style={{
+              ...styles.title,
+              fontSize: isMobile ? '22px' : '28px'
+            }}>Mes Réclamations</h1>
             <p style={styles.subtitle}>
               {ticketSections.pending.length + ticketSections.inProgress.length} réclamation(s) active(s)
             </p>
           </div>
           <button
             onClick={() => navigate('/app/student/create-ticket')}
-            style={styles.createButton}
+            style={{
+              ...styles.createButton,
+              width: isMobile ? '100%' : 'auto'
+            }}
           >
             ➕ Nouvelle Réclamation
           </button>
@@ -264,24 +290,15 @@ const styles = {
   },
   mainContent: {
     flex: 1,
-    marginLeft: '260px', // Largeur du sidebar
-    padding: '24px',
     transition: 'margin-left 0.3s ease',
-    '@media (max-width: 768px)': {
-      marginLeft: 0,
-      padding: '16px',
-    },
   },
   header: {
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: '24px',
-    flexWrap: 'wrap',
     gap: '16px',
   },
   title: {
-    fontSize: '28px',
     fontWeight: '600',
     color: '#1a1a1a',
     margin: 0,

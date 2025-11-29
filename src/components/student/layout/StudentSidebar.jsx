@@ -97,8 +97,8 @@ export default function StudentSidebar({
       {/* Sidebar */}
       <aside style={{
         ...styles.sidebar,
-        width: isCollapsed ? '80px' : '260px',
-        transform: isMobileOpen ? 'translateX(0)' : undefined
+        width: isMobile ? '260px' : (isCollapsed ? '80px' : '260px'),
+        transform: isMobile ? (isMobileOpen ? 'translateX(0)' : 'translateX(-100%)') : 'translateX(0)'
       }}>
         {/* Header */}
         <div style={styles.sidebarHeader}>
@@ -186,7 +186,6 @@ export default function StudentSidebar({
 const styles = {
   // Mobile Toggle
   mobileToggle: {
-    display: 'none',
     position: 'fixed',
     top: '15px',
     left: '15px',
@@ -200,23 +199,16 @@ const styles = {
     fontSize: '20px',
     cursor: 'pointer',
     boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-    '@media (max-width: 768px)': {
-      display: 'block'
-    }
   },
 
   overlay: {
-    display: 'none',
-    '@media (max-width: 768px)': {
-      display: 'block',
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      zIndex: 999
-    }
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    zIndex: 999
   },
 
   sidebar: {
@@ -231,11 +223,7 @@ const styles = {
     transition: 'width 0.3s ease, transform 0.3s ease',
     zIndex: 1000,
     boxShadow: '2px 0 10px rgba(0,0,0,0.05)',
-    overflowY: 'auto',
-    '@media (max-width: 768px)': {
-      transform: 'translateX(-100%)',
-      width: '260px'
-    }
+    overflowY: 'auto'
   },
 
   sidebarHeader: {

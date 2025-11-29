@@ -1,0 +1,86 @@
+/* Styles globaux pour le responsive mobile */
+
+/* Reset pour mobile */
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Optimisations mobile */
+@media (max-width: 768px) {
+  /* Empêcher le zoom sur les inputs */
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* Améliorer les boutons tactiles */
+  button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Scroll fluide */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Éviter les débordements horizontaux */
+  body {
+    overflow-x: hidden;
+  }
+
+  /* Améliorer la lisibilité */
+  p, li {
+    line-height: 1.6;
+  }
+}
+
+/* Amélioration des transitions */
+* {
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Style pour les liens et boutons */
+button:active,
+a:active {
+  opacity: 0.7;
+}
+
+/* Désactiver les sélections de texte sur les boutons */
+button {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Améliorer le rendu des images */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Fix pour Safari iOS */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+textarea {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Désactiver le bounce sur iOS */
+body {
+  overscroll-behavior-y: contain;
+}
