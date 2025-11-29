@@ -7,6 +7,7 @@ import CreateTicket from './pages/CreateTicket';
 import { AuthProvider } from './contexts/AuthContext';
 import AdminDashboard from './pages/AdminDashboard';
 import ArtisanHome from './pages/ArtisanHome';
+
 function App() {
   return (
     <AuthProvider> {/* 1. On enveloppe l'app avec la sécurité */}
@@ -22,6 +23,7 @@ function App() {
           <Route path="/create-ticket" element={<CreateTicket />} />
           <Route path="/app/admin" element={<AdminDashboard />} />
           <Route path="/app/artisan" element={<ArtisanHome />} />
+
         </Routes>
       </BrowserRouter>
     </AuthProvider>

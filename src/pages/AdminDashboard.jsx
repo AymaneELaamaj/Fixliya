@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { logoutUser } from '../../src/services/authService';
 
@@ -12,11 +12,11 @@ import ArtisansTab from '../components/admin/tabs/ArtisansTab';
 import StudentsTab from '../components/admin/tabs/StudentsTab';
 import StatisticsTab from '../components/admin/tabs/StatisticsTab';
 import ExternalizeModal from '../components/admin/modals/ExternalizeModal';
+import BuildingView from '../components/admin/BuildingView'; // Votre composant 2D
 
 // Styles
 import styles from '../components/admin/styles/AdminDashboard.module.css';
 
-// Constants
 const TAB_TITLES = {
   tickets: '📋 Gestion des Tickets',
   artisans: '👨‍🔧 Gestion des Artisans',
@@ -27,12 +27,17 @@ const TAB_TITLES = {
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('tickets');
+  
+  // --- NOUVEAUX ÉTATS POUR LA VUE 2D ---
+  const [viewMode, setViewMode] = useState('2d'); // '2d' ou 'list'
+  const [selectedBuilding, setSelectedBuilding] = useState(null);
+
   const [externalizeModal, setExternalizeModal] = useState({
     isOpen: false,
     ticket: null
   });
 
-  // Charger toutes les données avec le hook personnalisé
+  // 1. CHARGEMENT DES VRAIES DONNÉES
   const {
     tickets,
     artisans,
@@ -44,18 +49,61 @@ export default function AdminDashboard() {
     actions
   } = useAdminData();
 
-  // Handlers
+  // --- 2. INTELLIGENCE : Calculer les bâtiments depuis les tickets ---
+  // On utilise useMemo pour ne pas recalculer à chaque clic
+  const buildingsFromData = useMemo(() => {
+    if (!tickets) return [];
+
+    const buildingMap = {};
+
+    tickets.forEach(ticket => {
+      // Extraction intelligente du nom du bâtiment depuis le lieu
+      // Ex: "Bâtiment A - Chambre 1" -> "Bâtiment A"
+      // Si pas de tiret, on prend tout le lieu
+      const buildingName = ticket.location ? ticket.location.split(' - ')[0].trim() : "Autre";
+
+      if (!buildingMap[buildingName]) {
+        buildingMap[buildingName] = { 
+          id: buildingName, 
+          name: buildingName, 
+          incidents: 0, 
+          status: 'safe' 
+        };
+      }
+
+      // Si le ticket n'est pas terminé, c'est un incident actif
+      if (ticket.statut !== 'Terminé' && ticket.statut !== 'Clôturé') {
+        buildingMap[buildingName].incidents += 1;
+        buildingMap[buildingName].status = 'alert'; // Devient ROUGE
+      }
+    });
+
+    return Object.values(buildingMap);
+  }, [tickets]);
+
+  // --- 3. FILTRAGE DYNAMIQUE ---
+  const filteredTickets = useMemo(() => {
+    if (!selectedBuilding) return tickets;
+    return tickets.filter(t => t.location && t.location.includes(selectedBuilding));
+  }, [tickets, selectedBuilding]);
+
+
+  // HANDLERS
   const handleLogout = useCallback(async () => {
     await logoutUser();
     navigate('/login');
   }, [navigate]);
 
+  const handleBuildingClick = (buildingName) => {
+    setSelectedBuilding(buildingName);
+    setViewMode('list');
+  };
+
+  // ... (Vos anciens handlers : Assign, Externalize...)
   const handleAssignTicket = useCallback(async (ticketId, artisanId) => {
     if (!artisanId) return;
-
     const selectedArtisan = artisans.find(a => a.id === artisanId);
     if (!selectedArtisan) return;
-
     if (window.confirm(`Assigner ce ticket à ${selectedArtisan.prenom} ?`)) {
       try {
         await actions.assignTicket(ticketId, artisanId);
@@ -66,109 +114,106 @@ export default function AdminDashboard() {
     }
   }, [artisans, actions]);
 
-  const handleOpenExternalizeModal = useCallback((ticket) => {
-    setExternalizeModal({ isOpen: true, ticket });
-  }, []);
-
-  const handleCloseExternalizeModal = useCallback(() => {
-    setExternalizeModal({ isOpen: false, ticket: null });
-  }, []);
-
+  const handleOpenExternalizeModal = useCallback((ticket) => { setExternalizeModal({ isOpen: true, ticket }); }, []);
+  const handleCloseExternalizeModal = useCallback(() => { setExternalizeModal({ isOpen: false, ticket: null }); }, []);
   const handleExternalizeTicket = useCallback(async (providerId) => {
     if (!externalizeModal.ticket) return;
-
     try {
       const provider = await actions.externalizeTicket(externalizeModal.ticket.id, providerId);
       alert(`Ticket externalisé avec succès à ${provider.name} !`);
       handleCloseExternalizeModal();
     } catch (err) {
-      alert('Erreur lors de l\'externalisation: ' + err.message);
+      alert('Erreur: ' + err.message);
     }
   }, [externalizeModal.ticket, actions, handleCloseExternalizeModal]);
 
-  // Loading state
-  if (loading) {
-    return (
-      <div className={styles.loadingContainer}>
-        Chargement du tableau de bord...
-      </div>
-    );
-  }
 
-  // Error state
-  if (error) {
-    return (
-      <div className={styles.loadingContainer}>
-        <div>
-          <p>❌ Erreur lors du chargement: {error}</p>
-          <button onClick={() => window.location.reload()} className={`${styles.btn} ${styles.btnPrimary}`}>
-            Réessayer
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Render tab content
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'tickets':
-        return (
-          <TicketsTab
-            tickets={tickets}
-            artisans={artisans}
-            onAssign={handleAssignTicket}
-            onExternalize={handleOpenExternalizeModal}
-          />
-        );
-
-      case 'artisans':
-        return (
-          <ArtisansTab
-            artisans={artisans}
-            onUpdate={actions.updateArtisan}
-            onDelete={actions.deleteArtisan}
-            onCreate={actions.createArtisan}
-          />
-        );
-
-      case 'students':
-        return (
-          <StudentsTab
-            students={students}
-            onToggleStatus={actions.toggleStudentStatus}
-          />
-        );
-
-      case 'statistics':
-        return <StatisticsTab statistics={statistics} />;
-
-      default:
-        return null;
-    }
-  };
+  // Rendu Loading / Error
+  if (loading) return <div className={styles.loadingContainer}>Chargement...</div>;
+  if (error) return <div className={styles.loadingContainer}>Erreur: {error}</div>;
 
   return (
     <div className={styles.pageContainer}>
-      {/* Sidebar */}
-      <Sidebar
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        onLogout={handleLogout}
-      />
+      <Sidebar activeTab={activeTab} onTabChange={setActiveTab} onLogout={handleLogout} />
 
-      {/* Main Content */}
       <main className={styles.mainContent}>
-        {/* Header */}
+        
+        {/* HEADER DYNAMIQUE */}
         <header className={styles.header}>
-          <h1 className={styles.pageTitle}>{TAB_TITLES[activeTab]}</h1>
+          <div style={{display:'flex', flexDirection:'column'}}>
+             <h1 className={styles.pageTitle}>{TAB_TITLES[activeTab]}</h1>
+             {/* Fil d'ariane si filtré */}
+             {selectedBuilding && activeTab === 'tickets' && (
+               <span style={{fontSize:'12px', color:'#ef4444', fontWeight:'bold'}}>
+                 Filtre : {selectedBuilding} 
+                 <button onClick={() => setSelectedBuilding(null)} style={{marginLeft:'10px', cursor:'pointer', border:'none', background:'none', textDecoration:'underline'}}>
+                   (Effacer)
+                 </button>
+               </span>
+             )}
+          </div>
+
+          {/* SWITCH VUE (Visible uniquement sur l'onglet Tickets) */}
+          {activeTab === 'tickets' && (
+            <div style={{ display:'flex', background: 'white', padding: '4px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+              <button 
+                onClick={() => setViewMode('list')}
+                style={{
+                  padding: '8px 16px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontWeight: '600',
+                  background: viewMode === 'list' ? '#3b82f6' : 'transparent', color: viewMode === 'list' ? 'white' : '#6b7280'
+                }}
+              >
+                Liste
+              </button>
+              <button 
+                onClick={() => { setViewMode('2d'); setSelectedBuilding(null); }}
+                style={{
+                  padding: '8px 16px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontWeight: '600',
+                  background: viewMode === '2d' ? '#3b82f6' : 'transparent', color: viewMode === '2d' ? 'white' : '#6b7280'
+                }}
+              >
+                Vue 2D
+              </button>
+            </div>
+          )}
         </header>
 
-        {/* Tab Content */}
-        {renderTabContent()}
+        {/* CONTENU PRINCIPAL */}
+        {activeTab === 'tickets' ? (
+          viewMode === '2d' ? (
+            // --- VUE 2D DYNAMIQUE ---
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '20px', paddingBottom:'20px' }}>
+              {buildingsFromData.length > 0 ? (
+                buildingsFromData.map(b => (
+                  <div key={b.id} onClick={() => handleBuildingClick(b.name)}>
+                    <BuildingView name={b.name} incidents={b.incidents} />
+                  </div>
+                ))
+              ) : (
+                <div style={{gridColumn: '1/-1', textAlign:'center', padding:'40px', color:'#666'}}>
+                  Aucun bâtiment détecté. Créez un ticket pour voir apparaître votre immeuble.
+                </div>
+              )}
+            </div>
+          ) : (
+            // --- VUE LISTE (Vos composants existants avec données filtrées) ---
+            <TicketsTab
+              tickets={filteredTickets} // On passe la liste filtrée !
+              artisans={artisans}
+              onAssign={handleAssignTicket}
+              onExternalize={handleOpenExternalizeModal}
+            />
+          )
+        ) : activeTab === 'artisans' ? (
+          <ArtisansTab artisans={artisans} onUpdate={actions.updateArtisan} onDelete={actions.deleteArtisan} onCreate={actions.createArtisan} />
+        ) : activeTab === 'students' ? (
+          <StudentsTab students={students} onToggleStatus={actions.toggleStudentStatus} />
+        ) : (
+          <StatisticsTab statistics={statistics} />
+        )}
+
       </main>
 
-      {/* Externalize Modal */}
       {externalizeModal.isOpen && (
         <ExternalizeModal
           ticket={externalizeModal.ticket}
