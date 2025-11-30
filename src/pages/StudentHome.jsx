@@ -45,16 +45,14 @@ export default function StudentDashboard() {
 
   // Système de notifications
   const {
-    notifications,
     unreadCount,
     showToast,
     latestNotification,
-    closeToast,
-    markAsRead
+    closeToast
   } = useNotifications(userId);
 
   // Système d'archivage
-  const { handleArchive, handleUnarchive, canArchive, isArchiving } = useTicketArchive(userId, loadData);
+  const { handleArchive, handleUnarchive, canArchive } = useTicketArchive(userId, loadData);
 
   // Validation et notation
   const {
@@ -111,7 +109,14 @@ export default function StudentDashboard() {
 
   // États de chargement
   if (loading) {
-    return <div style={studentStyles.loading}>Chargement...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600">Chargement...</p>
+        </div>
+      </div>
+    );
   }
 
   // Compte désactivé
@@ -125,7 +130,7 @@ export default function StudentDashboard() {
   }
 
   return (
-    <div style={styles.container}>
+    <div className="flex min-h-screen bg-gray-50">
       {/* Sidebar avec navigation */}
       <StudentSidebar
         userName={userName}
@@ -136,33 +141,34 @@ export default function StudentDashboard() {
       />
 
       {/* Contenu principal */}
-      <div style={{
-        ...styles.mainContent,
-        marginLeft: isMobile ? 0 : '260px',
-        padding: isMobile ? '16px' : '24px',
-        paddingTop: isMobile ? '70px' : '24px' // Espace pour le bouton hamburger
-      }}>
+      <div className={`
+        flex-1 transition-all duration-300
+        ${isMobile ? 'ml-0 p-4 pt-[70px]' : 'ml-64 p-6'}
+      `}>
         {/* En-tête avec bouton nouvelle réclamation */}
-        <div style={{
-          ...styles.header,
-          flexDirection: isMobile ? 'column' : 'row',
-          alignItems: isMobile ? 'stretch' : 'center'
-        }}>
+        <div className={`
+          flex gap-4 mb-6
+          ${isMobile ? 'flex-col items-stretch' : 'flex-row items-center justify-between'}
+        `}>
           <div>
-            <h1 style={{
-              ...styles.title,
-              fontSize: isMobile ? '22px' : '28px'
-            }}>Mes Réclamations</h1>
-            <p style={styles.subtitle}>
+            <h1 className={`
+              font-semibold text-gray-900 m-0
+              ${isMobile ? 'text-2xl' : 'text-3xl'}
+            `}>
+              Mes Réclamations
+            </h1>
+            <p className="text-sm text-gray-600 mt-1">
               {ticketSections.pending.length + ticketSections.inProgress.length} réclamation(s) active(s)
             </p>
           </div>
           <button
             onClick={() => navigate('/app/student/create-ticket')}
-            style={{
-              ...styles.createButton,
-              width: isMobile ? '100%' : 'auto'
-            }}
+            className={`
+              px-6 py-3 bg-secondary text-white rounded-lg font-medium
+              shadow-md hover:shadow-lg hover:bg-opacity-90
+              transition-all duration-200
+              ${isMobile ? 'w-full' : 'w-auto'}
+            `}
           >
             ➕ Nouvelle Réclamation
           </button>
@@ -170,15 +176,15 @@ export default function StudentDashboard() {
 
         {/* Toggle afficher les archivées */}
         {ticketSections.archived.length > 0 && (
-          <div style={styles.archiveToggle}>
-            <label style={styles.toggleLabel}>
+          <div className="mb-5 p-3 bg-white rounded-lg shadow-sm">
+            <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
                 checked={showArchived}
                 onChange={(e) => setShowArchived(e.target.checked)}
-                style={styles.checkbox}
+                className="w-[18px] h-[18px] cursor-pointer accent-primary"
               />
-              <span style={styles.toggleText}>
+              <span className="text-sm text-gray-700 font-medium">
                 Afficher les réclamations archivées ({ticketSections.archived.length})
               </span>
             </label>
@@ -186,7 +192,7 @@ export default function StudentDashboard() {
         )}
 
         {/* Sections de tickets */}
-        <div style={styles.sections}>
+        <div className="flex flex-col gap-6">
           {/* En attente d'assignation */}
           {ticketSections.pending.length > 0 && (
             <TicketSection
@@ -241,15 +247,17 @@ export default function StudentDashboard() {
 
           {/* Message si aucun ticket */}
           {tickets.length === 0 && (
-            <div style={styles.emptyState}>
-              <div style={styles.emptyIcon}>📭</div>
-              <h3 style={styles.emptyTitle}>Aucune réclamation</h3>
-              <p style={styles.emptyText}>
+            <div className="text-center py-16 px-5 bg-white rounded-xl shadow-md">
+              <div className="text-6xl mb-4">📭</div>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                Aucune réclamation
+              </h3>
+              <p className="text-sm text-gray-600 mb-6">
                 Vous n'avez pas encore créé de réclamation.
               </p>
               <button
                 onClick={() => navigate('/app/student/create-ticket')}
-                style={styles.emptyButton}
+                className="px-6 py-3 bg-secondary text-white rounded-lg font-medium shadow-md hover:shadow-lg hover:bg-opacity-90 transition-all duration-200"
               >
                 Créer ma première réclamation
               </button>
@@ -280,105 +288,3 @@ export default function StudentDashboard() {
     </div>
   );
 }
-
-// Styles spécifiques pour le layout avec sidebar
-const styles = {
-  container: {
-    display: 'flex',
-    minHeight: '100vh',
-    backgroundColor: '#f5f5f5',
-  },
-  mainContent: {
-    flex: 1,
-    transition: 'margin-left 0.3s ease',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    marginBottom: '24px',
-    gap: '16px',
-  },
-  title: {
-    fontWeight: '600',
-    color: '#1a1a1a',
-    margin: 0,
-  },
-  subtitle: {
-    fontSize: '14px',
-    color: '#666',
-    marginTop: '4px',
-  },
-  createButton: {
-    padding: '12px 24px',
-    backgroundColor: '#005596',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '15px',
-    fontWeight: '500',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-    boxShadow: '0 2px 8px rgba(0, 85, 150, 0.2)',
-  },
-  archiveToggle: {
-    marginBottom: '20px',
-    padding: '12px 16px',
-    backgroundColor: 'white',
-    borderRadius: '8px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-  },
-  toggleLabel: {
-    display: 'flex',
-    alignItems: 'center',
-    cursor: 'pointer',
-    gap: '8px',
-  },
-  checkbox: {
-    width: '18px',
-    height: '18px',
-    cursor: 'pointer',
-  },
-  toggleText: {
-    fontSize: '14px',
-    color: '#333',
-    fontWeight: '500',
-  },
-  sections: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '24px',
-  },
-  emptyState: {
-    textAlign: 'center',
-    padding: '60px 20px',
-    backgroundColor: 'white',
-    borderRadius: '12px',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-  },
-  emptyIcon: {
-    fontSize: '64px',
-    marginBottom: '16px',
-  },
-  emptyTitle: {
-    fontSize: '20px',
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: '8px',
-  },
-  emptyText: {
-    fontSize: '14px',
-    color: '#666',
-    marginBottom: '24px',
-  },
-  emptyButton: {
-    padding: '12px 24px',
-    backgroundColor: '#005596',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '15px',
-    fontWeight: '500',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-  },
-};

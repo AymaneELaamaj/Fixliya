@@ -19,7 +19,7 @@ import {
 } from '../components/artisan';
 
 /**
- * Page d'accueil de l'espace artisan
+ * Page d'accueil de l'espace artisan avec Tailwind CSS
  */
 export default function ArtisanHome() {
   const navigate = useNavigate();
@@ -50,7 +50,7 @@ export default function ArtisanHome() {
   };
 
   return (
-    <div style={artisanStyles.pageContainer}>
+    <div className="flex min-h-screen bg-gray-50">
       {/* SIDEBAR */}
       <Sidebar
         activeTab={activeTab}
@@ -61,12 +61,10 @@ export default function ArtisanHome() {
       />
 
       {/* MAIN CONTENT */}
-      <main style={{
-        ...artisanStyles.mainContent,
-        marginLeft: isMobile ? '0' : '260px',
-        padding: isMobile ? '15px' : '30px',
-        paddingBottom: isMobile ? '80px' : '30px' // Espace pour navbar mobile
-      }}>
+      <main className={`
+        flex-1 transition-all duration-300
+        ${isMobile ? 'ml-0 p-4 pb-20' : 'ml-64 p-8'}
+      `}>
         <Header
           activeTab={activeTab}
           missionsCount={missions.length}
@@ -76,19 +74,19 @@ export default function ArtisanHome() {
         />
 
         {loading ? (
-          <p style={{ 
-            textAlign: 'center', 
-            marginTop: '20px', 
-            color: '#666', 
-            fontSize: isMobile ? '14px' : '16px' 
-          }}>
-            Chargement...
-          </p>
+          <div className="flex items-center justify-center mt-8">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className={`text-gray-600 ${isMobile ? 'text-sm' : 'text-base'}`}>
+                Chargement...
+              </p>
+            </div>
+          </div>
         ) : (
           <>
             {/* Onglet: Ma Journée */}
             {activeTab === 'todo' && (
-              <div style={artisanStyles.section}>
+              <div className="mt-6">
                 {missions.length === 0 ? (
                   <EmptyState
                     icon="☕"
@@ -98,11 +96,10 @@ export default function ArtisanHome() {
                     isMobile={isMobile}
                   />
                 ) : (
-                  <div style={{
-                    ...artisanStyles.cardGrid,
-                    gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(400px, 1fr))',
-                    gap: isMobile ? '15px' : '20px'
-                  }}>
+                  <div className={`
+                    grid gap-5
+                    ${isMobile ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3'}
+                  `}>
                     {missions.map(mission => (
                       <MissionCard
                         key={mission.id}
@@ -119,7 +116,7 @@ export default function ArtisanHome() {
 
             {/* Onglet: Historique */}
             {activeTab === 'history' && (
-              <div style={artisanStyles.section}>
+              <div className="mt-6">
                 {history.length === 0 ? (
                   <EmptyState
                     icon="📭"
@@ -130,14 +127,21 @@ export default function ArtisanHome() {
                   />
                 ) : (
                   <>
-                    <HistoryStatsBar history={history} styles={artisanStyles} isMobile={isMobile} />
-                    <div style={{
-                      ...artisanStyles.historyGrid,
-                      gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(350px, 1fr))',
-                      gap: isMobile ? '12px' : '15px'
-                    }}>
+                    <HistoryStatsBar 
+                      history={history} 
+                      styles={artisanStyles} 
+                      isMobile={isMobile} 
+                    />
+                    <div className={`
+                      grid gap-4 mt-5
+                      ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}
+                    `}>
                       {history.map(item => (
-                        <HistoryCard key={item.id} item={item} styles={artisanStyles} />
+                        <HistoryCard 
+                          key={item.id} 
+                          item={item} 
+                          styles={artisanStyles} 
+                        />
                       ))}
                     </div>
                   </>

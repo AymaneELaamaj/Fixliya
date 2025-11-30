@@ -2,9 +2,9 @@ import React from 'react';
 import { getStatusInfo } from '../utils/statusHelpers';
 
 /**
- * Carte pour afficher un ticket individuel
+ * Carte pour afficher un ticket individuel - Version Tailwind CSS
  */
-export default function TicketCard({ ticket, onValidate, onCancel, onArchive, canArchive, styles }) {
+export default function TicketCard({ ticket, onValidate, onCancel, onArchive, canArchive }) {
   const statusInfo = getStatusInfo(ticket.status);
   
   // Vérifier si le ticket est récent (moins de 24h)
@@ -16,65 +16,72 @@ export default function TicketCard({ ticket, onValidate, onCancel, onArchive, ca
   };
 
   return (
-    <div style={styles?.ticketCard || defaultStyles.ticketCard}>
-      <div
-        style={{
-          ...(styles?.urgentIndicator || defaultStyles.urgentIndicator),
-          backgroundColor: ticket.isUrgent ? '#ef4444' : '#e5e7eb'
-        }}
-      />
+    <div className="card relative overflow-hidden transform hover:scale-[1.01] transition-all duration-200">
+      {/* Indicateur urgent */}
+      <div className={`absolute left-0 top-0 bottom-0 w-1 ${ticket.isUrgent ? 'bg-danger' : 'bg-gray-200'}`} />
 
-      <div style={styles?.cardContent || defaultStyles.cardContent}>
-        <div style={styles?.cardHeader || defaultStyles.cardHeader}>
-          <div style={styles?.headerLeft || defaultStyles.headerLeft}>
-            <span style={styles?.categoryBadge || defaultStyles.categoryBadge}>
+      <div className="p-4 md:p-5">
+        {/* Header avec badges */}
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center px-3 py-1 bg-primary bg-opacity-10 text-primary rounded-full text-xs font-semibold">
               {ticket.category}
             </span>
+            
             {ticket.isUrgent && (
-              <span style={styles?.urgentBadge || defaultStyles.urgentBadge}>
+              <span className="badge-danger">
                 ⚠️ URGENT
               </span>
             )}
+            
             {isNew() && !ticket.archived && (
-              <span style={defaultStyles.newBadge}>✨ Nouveau</span>
+              <span className="inline-flex items-center px-2 py-1 bg-info bg-opacity-10 text-info rounded-full text-xs font-semibold">
+                ✨ Nouveau
+              </span>
             )}
+            
             {ticket.archived && (
-              <span style={defaultStyles.archivedBadge}>📦 Archivé</span>
+              <span className="inline-flex items-center px-2 py-1 bg-gray-400 bg-opacity-20 text-gray-600 rounded-full text-xs font-semibold">
+                📦 Archivé
+              </span>
             )}
           </div>
-          <span
+          
+          <span 
+            className="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-bold"
             style={{
               backgroundColor: statusInfo.bg,
-              color: statusInfo.color,
-              padding: '6px 12px',
-              borderRadius: '12px',
-              fontSize: '12px',
-              fontWeight: 'bold'
+              color: statusInfo.color
             }}
           >
             {statusInfo.label}
           </span>
         </div>
 
-        <p style={styles?.description || defaultStyles.description}>
+        {/* Description */}
+        <p className="text-gray-700 text-sm md:text-base mb-3 line-clamp-3">
           {ticket.description}
         </p>
 
-        <p style={styles?.location || defaultStyles.location}>
-          📍 {ticket.location}
+        {/* Localisation */}
+        <p className="text-gray-600 text-sm mb-4 flex items-center gap-1">
+          <span>📍</span>
+          <span>{ticket.location}</span>
         </p>
 
-        {/* Afficher les photos si présentes */}
+        {/* Photos si présentes */}
         {ticket.imageUrls && ticket.imageUrls.length > 0 && (
-          <div style={defaultStyles.mediaSection}>
-            <p style={defaultStyles.mediaSectionTitle}>📷 Photos ({ticket.imageUrls.length})</p>
-            <div style={defaultStyles.photosGrid}>
+          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+            <p className="text-xs font-semibold text-gray-600 mb-2">
+              📷 Photos ({ticket.imageUrls.length})
+            </p>
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
               {ticket.imageUrls.map((url, index) => (
                 <img 
                   key={index} 
                   src={url} 
                   alt={`Photo ${index + 1}`} 
-                  style={defaultStyles.photoThumb}
+                  className="w-full h-20 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
                   onClick={(e) => {
                     e.stopPropagation();
                     window.open(url, '_blank');
@@ -85,13 +92,15 @@ export default function TicketCard({ ticket, onValidate, onCancel, onArchive, ca
           </div>
         )}
 
-        {/* Afficher l'audio si présent */}
+        {/* Audio si présent */}
         {ticket.audioUrl && (
-          <div style={defaultStyles.mediaSection}>
-            <p style={defaultStyles.mediaSectionTitle}>🎙️ Message vocal</p>
+          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+            <p className="text-xs font-semibold text-gray-600 mb-2">
+              🎙️ Message vocal
+            </p>
             <audio 
               controls 
-              style={defaultStyles.audioPlayer}
+              className="w-full h-10"
               onClick={(e) => e.stopPropagation()}
             >
               <source src={ticket.audioUrl} type="audio/mp3" />
@@ -100,54 +109,101 @@ export default function TicketCard({ ticket, onValidate, onCancel, onArchive, ca
           </div>
         )}
 
-        {/* Afficher l'artisan assigné */}
+        {/* Preuves artisan si présentes */}
+        {(ticket.beforePhotoUrl || ticket.afterPhotoUrl) && (
+          <div className="mb-4 p-3 bg-green-50 rounded-lg">
+            <p className="text-xs font-semibold text-green-700 mb-2">
+              🛠️ Preuves d'intervention
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {ticket.beforePhotoUrl && (
+                <div>
+                  <p className="text-xs text-gray-600 mb-1">Avant</p>
+                  <img 
+                    src={ticket.beforePhotoUrl} 
+                    alt="Avant intervention" 
+                    className="w-full h-24 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity border-2 border-orange-300"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      window.open(ticket.beforePhotoUrl, '_blank');
+                    }}
+                  />
+                </div>
+              )}
+              {ticket.afterPhotoUrl && (
+                <div>
+                  <p className="text-xs text-gray-600 mb-1">Après</p>
+                  <img 
+                    src={ticket.afterPhotoUrl} 
+                    alt="Après intervention" 
+                    className="w-full h-24 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity border-2 border-green-300"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      window.open(ticket.afterPhotoUrl, '_blank');
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Artisan assigné */}
         {ticket.assignedToName && (
-          <p style={defaultStyles.artisan}>
-            👨‍🔧 Assigné à : {ticket.assignedToName}
+          <p className="text-sm text-gray-600 mb-3 flex items-center gap-1">
+            <span>👨‍🔧</span>
+            <span>Assigné à : <span className="font-semibold">{ticket.assignedToName}</span></span>
           </p>
         )}
 
-        <div style={styles?.cardFooter || defaultStyles.cardFooter}>
-          <span style={styles?.date || defaultStyles.date}>
-            📅 {new Date(ticket.createdAt).toLocaleDateString('fr-FR')}
+        {/* Footer */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-gray-200">
+          <span className="text-xs text-gray-500 flex items-center gap-1">
+            <span>📅</span>
+            <span>{new Date(ticket.createdAt).toLocaleDateString('fr-FR', { 
+              day: 'numeric', 
+              month: 'long', 
+              year: 'numeric' 
+            })}</span>
           </span>
 
-          <div style={defaultStyles.actions}>
-            {/* BOUTON DE VALIDATION (Visible seulement si l'artisan a fini) */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Bouton de validation */}
             {ticket.status === 'termine_artisan' && onValidate && (
               <button 
                 onClick={() => onValidate(ticket)} 
-                style={styles?.validateBtn || defaultStyles.validateBtn}
+                className="px-4 py-2 bg-gradient-to-r from-success to-green-600 text-white rounded-lg text-sm font-semibold hover:shadow-medium transition-all active:scale-95"
               >
                 ⭐ Valider & Noter
               </button>
             )}
 
-            {/* AFFICHER LA NOTE SI TERMINÉ */}
+            {/* Afficher la note */}
             {ticket.status === 'completed' && ticket.rating && (
-              <span style={styles?.ratingDisplay || defaultStyles.ratingDisplay}>
-                Note : {ticket.rating}/5 ⭐
+              <span className="px-3 py-1.5 bg-warning bg-opacity-10 text-warning rounded-lg text-sm font-semibold flex items-center gap-1">
+                <span>Note : {ticket.rating}/5</span>
+                <span>⭐</span>
               </span>
             )}
 
-            {/* BOUTON D'ANNULATION (Visible si en attente ou en cours) */}
+            {/* Bouton d'annulation */}
             {(ticket.status === 'pending' || ticket.status === 'in_progress') && onCancel && (
               <button
                 onClick={() => onCancel(ticket)}
-                style={styles?.ticketCancelBtn || defaultStyles.ticketCancelBtn}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold transition-colors active:scale-95"
               >
                 ✕ Annuler
               </button>
             )}
 
-            {/* BOUTON D'ARCHIVAGE */}
+            {/* Bouton d'archivage */}
             {canArchive && canArchive(ticket) && onArchive && (
               <button
                 onClick={() => onArchive(ticket.id)}
-                style={defaultStyles.archiveBtn}
+                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-sm transition-colors active:scale-95"
                 title="Archiver cette réclamation"
               >
-                📦 Archiver
+                📦
               </button>
             )}
           </div>
@@ -156,203 +212,3 @@ export default function TicketCard({ ticket, onValidate, onCancel, onArchive, ca
     </div>
   );
 }
-
-// Styles par défaut
-const defaultStyles = {
-  ticketCard: {
-    backgroundColor: 'white',
-    borderRadius: '12px',
-    overflow: 'hidden',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-    display: 'flex',
-    marginBottom: '15px',
-    transition: 'transform 0.2s, box-shadow 0.2s',
-    cursor: 'pointer'
-  },
-
-  urgentIndicator: {
-    width: '5px',
-    minHeight: '100%'
-  },
-
-  cardContent: {
-    flex: 1,
-    padding: '15px'
-  },
-
-  cardHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: '12px',
-    gap: '10px',
-    flexWrap: 'wrap'
-  },
-
-  headerLeft: {
-    display: 'flex',
-    gap: '8px',
-    flexWrap: 'wrap',
-    flex: 1
-  },
-
-  categoryBadge: {
-    backgroundColor: '#eff6ff',
-    color: '#005596',
-    padding: '4px 10px',
-    borderRadius: '6px',
-    fontSize: '13px',
-    fontWeight: '600'
-  },
-
-  urgentBadge: {
-    backgroundColor: '#fee2e2',
-    color: '#dc2626',
-    padding: '4px 10px',
-    borderRadius: '6px',
-    fontSize: '12px',
-    fontWeight: '600'
-  },
-
-  newBadge: {
-    backgroundColor: '#fef3c7',
-    color: '#d97706',
-    padding: '4px 10px',
-    borderRadius: '6px',
-    fontSize: '12px',
-    fontWeight: '600'
-  },
-
-  archivedBadge: {
-    backgroundColor: '#f3f4f6',
-    color: '#6b7280',
-    padding: '4px 10px',
-    borderRadius: '6px',
-    fontSize: '12px',
-    fontWeight: '600'
-  },
-
-  description: {
-    fontSize: '14px',
-    color: '#374151',
-    margin: '0 0 10px 0',
-    lineHeight: '1.5'
-  },
-
-  location: {
-    fontSize: '13px',
-    color: '#6b7280',
-    margin: '0 0 8px 0'
-  },
-
-  artisan: {
-    fontSize: '13px',
-    color: '#059669',
-    margin: '0 0 12px 0',
-    fontWeight: '600'
-  },
-
-  mediaSection: {
-    backgroundColor: '#f9fafb',
-    padding: '12px',
-    borderRadius: '8px',
-    marginBottom: '12px',
-    border: '1px solid #e5e7eb'
-  },
-
-  mediaSectionTitle: {
-    fontSize: '13px',
-    fontWeight: '700',
-    color: '#374151',
-    margin: '0 0 10px 0'
-  },
-
-  photosGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
-    gap: '8px'
-  },
-
-  photoThumb: {
-    width: '100%',
-    aspectRatio: '1',
-    objectFit: 'cover',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    border: '2px solid #e5e7eb',
-    transition: 'transform 0.2s, border-color 0.2s',
-    '&:hover': {
-      transform: 'scale(1.05)',
-      borderColor: '#667eea'
-    }
-  },
-
-  audioPlayer: {
-    width: '100%',
-    height: '36px',
-    borderRadius: '6px'
-  },
-
-  cardFooter: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: '10px',
-    flexWrap: 'wrap',
-    marginTop: '12px',
-    paddingTop: '12px',
-    borderTop: '1px solid #f3f4f6'
-  },
-
-  date: {
-    fontSize: '12px',
-    color: '#9ca3af'
-  },
-
-  actions: {
-    display: 'flex',
-    gap: '8px',
-    flexWrap: 'wrap'
-  },
-
-  validateBtn: {
-    backgroundColor: '#10b981',
-    color: 'white',
-    border: 'none',
-    padding: '8px 16px',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontSize: '13px',
-    fontWeight: '600',
-    transition: 'background-color 0.2s'
-  },
-
-  ticketCancelBtn: {
-    backgroundColor: '#fef2f2',
-    color: '#ef4444',
-    border: '1px solid #fecaca',
-    padding: '8px 16px',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontSize: '13px',
-    fontWeight: '600'
-  },
-
-  archiveBtn: {
-    backgroundColor: '#f9fafb',
-    color: '#6b7280',
-    border: '1px solid #e5e7eb',
-    padding: '8px 16px',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontSize: '13px',
-    fontWeight: '600',
-    transition: 'all 0.2s'
-  },
-
-  ratingDisplay: {
-    fontSize: '13px',
-    color: '#f59e0b',
-    fontWeight: '600'
-  }
-};
