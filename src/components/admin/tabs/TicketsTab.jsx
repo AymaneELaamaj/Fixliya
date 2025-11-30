@@ -126,14 +126,15 @@ export default function TicketsTab({ tickets, artisans, onAssign, onExternalize 
         <table className={styles.table}>
           <thead>
             <tr className={styles.thRow}>
-              <th className={styles.thCell}>Urgence</th>
               <th className={styles.thCell}>Catégorie</th>
               <th className={styles.thCell}>Lieu</th>
               <th className={styles.thCell}>Description</th>
+              <th className={styles.thCell}>Photos Résident</th>
+              <th className={styles.thCell}>Audio Résident</th>
+              <th className={styles.thCell}>Preuves Artisan</th>
               <th className={styles.thCell}>Planification</th>
               <th className={styles.thCell}>Statut</th>
               <th className={styles.thCell}>Assigné à</th>
-              <th className={styles.thCell}>Actions</th>
               <th className={styles.thCell}>ID</th>
             </tr>
           </thead>
@@ -144,7 +145,6 @@ export default function TicketsTab({ tickets, artisans, onAssign, onExternalize 
                 ticket={ticket}
                 artisans={artisans}
                 onAssign={onAssign}
-                onExternalize={onExternalize}
               />
             ))}
           </tbody>
@@ -171,7 +171,7 @@ export default function TicketsTab({ tickets, artisans, onAssign, onExternalize 
   );
 }
 
-function TicketRow({ ticket, artisans, onAssign, onExternalize }) {
+function TicketRow({ ticket, artisans, onAssign }) {
   const handleAssign = (e) => {
     const artisanId = e.target.value;
     if (artisanId) {
@@ -181,16 +181,11 @@ function TicketRow({ ticket, artisans, onAssign, onExternalize }) {
 
   return (
     <tr className={styles.tr}>
-      {/* Urgence */}
-      <td className={styles.tdCell}>
-        <span className={`${styles.badge} ${ticket.isUrgent ? styles.badgeUrgent : styles.badgeNormal}`}>
-          {ticket.isUrgent ? '🔴 URGENT' : '⚪ Normal'}
-        </span>
-      </td>
-
       {/* Catégorie */}
       <td className={styles.tdCell}>
-        <span className={`${styles.badge} ${styles.badgeCategory}`}>{ticket.category}</span>
+        <span className={`${styles.badge} ${styles.badgeCategory}`}>
+          {ticket.isUrgent && '🔴 '}{ticket.category}
+        </span>
       </td>
 
       {/* Lieu */}
@@ -198,36 +193,25 @@ function TicketRow({ ticket, artisans, onAssign, onExternalize }) {
 
       {/* Description */}
       <td className={`${styles.tdCell} ${styles.descriptionCell}`}>
-        <div>
-          {ticket.description}
-          {/* Indicateurs de médias */}
-          <div style={{display: 'flex', gap: '6px', marginTop: '6px'}}>
-            {ticket.imageUrls && ticket.imageUrls.length > 0 && (
-              <span style={{
-                fontSize: '11px',
-                backgroundColor: '#dbeafe',
-                color: '#1e40af',
-                padding: '2px 6px',
-                borderRadius: '4px',
-                fontWeight: '600'
-              }}>
-                📷 {ticket.imageUrls.length} photo{ticket.imageUrls.length > 1 ? 's' : ''}
-              </span>
-            )}
-            {ticket.audioUrl && (
-              <span style={{
-                fontSize: '11px',
-                backgroundColor: '#fef3c7',
-                color: '#92400e',
-                padding: '2px 6px',
-                borderRadius: '4px',
-                fontWeight: '600'
-              }}>
-                🎙️ Audio
-              </span>
-            )}
-          </div>
-        </div>
+        {ticket.description}
+      </td>
+
+      {/* Photos Résident */}
+      <td className={styles.tdCell}>
+        <MediaPhotosCell imageUrls={ticket.imageUrls} />
+      </td>
+
+      {/* Audio Résident */}
+      <td className={styles.tdCell}>
+        <MediaAudioCell audioUrl={ticket.audioUrl} />
+      </td>
+
+      {/* Preuves Artisan */}
+      <td className={styles.tdCell}>
+        <ArtisanProofCell 
+          beforePhotoUrl={ticket.beforePhotoUrl}
+          afterPhotoUrl={ticket.afterPhotoUrl}
+        />
       </td>
 
       {/* Planification */}
@@ -249,11 +233,6 @@ function TicketRow({ ticket, artisans, onAssign, onExternalize }) {
           artisans={artisans}
           onAssign={handleAssign}
         />
-      </td>
-
-      {/* Actions */}
-      <td className={styles.tdCell}>
-        <ActionsCell ticket={ticket} onExternalize={onExternalize} />
       </td>
 
       {/* ID */}
@@ -320,27 +299,293 @@ function AssignmentCell({ ticket, artisans, onAssign }) {
   );
 }
 
-function ActionsCell({ ticket, onExternalize }) {
-  if (ticket.status === 'completed' || ticket.status === 'cancelled') {
+// Composants pour afficher les médias
+function MediaPhotosCell({ imageUrls }) {
+  const [showModal, setShowModal] = React.useState(false);
+
+  if (!imageUrls || imageUrls.length === 0) {
     return <span style={{ color: '#94a3b8', fontSize: '12px' }}>—</span>;
   }
 
-  if (ticket.isExternalized) {
-    return (
-      <span className={styles.badgeExternalized}>
-        🌐 {ticket.externalizedToName}
-      </span>
-    );
+  return (
+    <>
+      <button
+        onClick={() => setShowModal(true)}
+        style={{
+          backgroundColor: '#3b82f6',
+          color: 'white',
+          border: 'none',
+          padding: '6px 12px',
+          borderRadius: '6px',
+          cursor: 'pointer',
+          fontSize: '12px',
+          fontWeight: '600',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px'
+        }}
+      >
+        📷 {imageUrls.length} photo{imageUrls.length > 1 ? 's' : ''}
+      </button>
+
+      {showModal && (
+        <div 
+          onClick={() => setShowModal(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '20px',
+              maxWidth: '800px',
+              maxHeight: '90vh',
+              overflow: 'auto'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
+              <h3 style={{ margin: 0 }}>📷 Photos du Résident</h3>
+              <button
+                onClick={() => setShowModal(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#666'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
+              {imageUrls.map((url, index) => (
+                <img
+                  key={index}
+                  src={url}
+                  alt={`Photo ${index + 1}`}
+                  onClick={() => window.open(url, '_blank')}
+                  style={{
+                    width: '100%',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    border: '2px solid #e5e7eb'
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function MediaAudioCell({ audioUrl }) {
+  const [showModal, setShowModal] = React.useState(false);
+
+  if (!audioUrl) {
+    return <span style={{ color: '#94a3b8', fontSize: '12px' }}>—</span>;
   }
 
   return (
-    <button
-      onClick={() => onExternalize(ticket)}
-      className={`${styles.btn} ${styles.btnExternalize}`}
-      title="Externaliser vers prestataire agréé"
-    >
-      🌐 Externaliser
-    </button>
+    <>
+      <button
+        onClick={() => setShowModal(true)}
+        style={{
+          backgroundColor: '#f59e0b',
+          color: 'white',
+          border: 'none',
+          padding: '6px 12px',
+          borderRadius: '6px',
+          cursor: 'pointer',
+          fontSize: '12px',
+          fontWeight: '600'
+        }}
+      >
+        🎙️ Audio
+      </button>
+
+      {showModal && (
+        <div 
+          onClick={() => setShowModal(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '20px',
+              maxWidth: '500px'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
+              <h3 style={{ margin: 0 }}>🎙️ Message Vocal du Résident</h3>
+              <button
+                onClick={() => setShowModal(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#666'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            <audio 
+              controls 
+              autoPlay
+              style={{
+                width: '100%',
+                borderRadius: '8px'
+              }}
+            >
+              <source src={audioUrl} type="audio/mp3" />
+            </audio>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function ArtisanProofCell({ beforePhotoUrl, afterPhotoUrl }) {
+  const [showModal, setShowModal] = React.useState(false);
+
+  const hasProof = beforePhotoUrl || afterPhotoUrl;
+
+  if (!hasProof) {
+    return <span style={{ color: '#94a3b8', fontSize: '12px' }}>—</span>;
+  }
+
+  const proofCount = (beforePhotoUrl ? 1 : 0) + (afterPhotoUrl ? 1 : 0);
+
+  return (
+    <>
+      <button
+        onClick={() => setShowModal(true)}
+        style={{
+          backgroundColor: '#10b981',
+          color: 'white',
+          border: 'none',
+          padding: '6px 12px',
+          borderRadius: '6px',
+          cursor: 'pointer',
+          fontSize: '12px',
+          fontWeight: '600'
+        }}
+      >
+        🛠️ {proofCount} preuve{proofCount > 1 ? 's' : ''}
+      </button>
+
+      {showModal && (
+        <div 
+          onClick={() => setShowModal(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '20px',
+              maxWidth: '800px',
+              maxHeight: '90vh',
+              overflow: 'auto'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
+              <h3 style={{ margin: 0 }}>🛠️ Preuves d'Intervention de l'Artisan</h3>
+              <button
+                onClick={() => setShowModal(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#666'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: beforePhotoUrl && afterPhotoUrl ? '1fr 1fr' : '1fr', gap: '15px' }}>
+              {beforePhotoUrl && (
+                <div>
+                  <p style={{ fontWeight: 'bold', color: '#059669', marginBottom: '8px' }}>📷 AVANT l'intervention</p>
+                  <img
+                    src={beforePhotoUrl}
+                    alt="Photo avant"
+                    onClick={() => window.open(beforePhotoUrl, '_blank')}
+                    style={{
+                      width: '100%',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      border: '3px solid #10b981'
+                    }}
+                  />
+                </div>
+              )}
+              {afterPhotoUrl && (
+                <div>
+                  <p style={{ fontWeight: 'bold', color: '#3b82f6', marginBottom: '8px' }}>📷 APRÈS l'intervention</p>
+                  <img
+                    src={afterPhotoUrl}
+                    alt="Photo après"
+                    onClick={() => window.open(afterPhotoUrl, '_blank')}
+                    style={{
+                      width: '100%',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      border: '3px solid #3b82f6'
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
