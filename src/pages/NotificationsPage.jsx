@@ -26,8 +26,8 @@ export default function NotificationsPage() {
     if (!notification.read) {
       await markAsRead(notification.id);
     }
-    // Rediriger vers la page d'accueil avec le ticket
-    navigate('/app/student');
+    // Rediriger vers la page de détail du ticket
+    navigate(`/app/student/ticket/${notification.ticketId}`);
   };
 
   const handleMarkAllAsRead = async () => {

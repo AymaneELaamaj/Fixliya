@@ -3,7 +3,7 @@ import { useTicketFilters } from '../../../hooks/admin/useTicketFilters';
 import { getStatusBadgeClass, getStatusLabel } from '../utils/statusHelpers';
 import styles from '../styles/AdminDashboard.module.css';
 
-export default function TicketsTab({ tickets, artisans, onAssign, onExternalize }) {
+export default function TicketsTab({ tickets, artisans, onAssign }) {
   const [locals, setLocals] = useState([]);
   const [selectedLocalFilter, setSelectedLocalFilter] = useState('all');
   
@@ -159,7 +159,6 @@ export default function TicketsTab({ tickets, artisans, onAssign, onExternalize 
             ticket={ticket}
             artisans={artisans}
             onAssign={onAssign}
-            onExternalize={onExternalize}
           />
         ))}
       </div>
@@ -590,7 +589,7 @@ function ArtisanProofCell({ beforePhotoUrl, afterPhotoUrl }) {
 }
 
 // Mobile Ticket Card Component
-function MobileTicketCard({ ticket, artisans, onAssign, onExternalize }) {
+function MobileTicketCard({ ticket, artisans, onAssign }) {
   const handleAssign = (e) => {
     const artisanId = e.target.value;
     if (artisanId) {
@@ -603,48 +602,90 @@ function MobileTicketCard({ ticket, artisans, onAssign, onExternalize }) {
 
   return (
     <div className={`${styles.mobileTicketCard} ${ticket.isUrgent ? styles.urgent : ''}`}>
-      {/* Header: Urgence + Statut */}
+      {/* Header: Catégorie + Statut */}
       <div className={styles.mobileCardHeader}>
-        <span className={`${styles.badge} ${ticket.isUrgent ? styles.badgeUrgent : styles.badgeNormal}`}>
-          {ticket.isUrgent ? '🔴 URGENT' : '⚪ Normal'}
+        <span className={`${styles.badge} ${styles.badgeCategory}`}>
+          {ticket.isUrgent && '🔴 '}{ticket.category}
         </span>
         <span className={`${styles.badge} ${getStatusBadgeClass(ticket.status, styles)}`}>
           {getStatusLabel(ticket.status)}
         </span>
       </div>
 
-      {/* Titre */}
+      {/* Lieu */}
       <div className={styles.mobileCardTitle}>
-        {ticket.category} - {ticket.location || 'N/A'}
+        📍 {ticket.location || 'N/A'}
       </div>
 
-      {/* Description tronquée */}
+      {/* Description */}
       <div className={styles.mobileCardDescription}>
         {ticket.description}
       </div>
 
+      {/* Section Médias du Résident */}
+      <div style={{
+        backgroundColor: '#f8fafc',
+        padding: '12px',
+        borderRadius: '8px',
+        marginTop: '12px',
+        border: '1px solid #e2e8f0'
+      }}>
+        <div style={{
+          fontSize: '13px',
+          fontWeight: '700',
+          color: '#475569',
+          marginBottom: '8px'
+        }}>
+          📱 Médias du Résident
+        </div>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <MediaPhotosCell imageUrls={ticket.imageUrls} />
+          <MediaAudioCell audioUrl={ticket.audioUrl} />
+        </div>
+      </div>
+
+      {/* Section Preuves Artisan */}
+      {(ticket.beforePhotoUrl || ticket.afterPhotoUrl) && (
+        <div style={{
+          backgroundColor: '#f0fdf4',
+          padding: '12px',
+          borderRadius: '8px',
+          marginTop: '12px',
+          border: '1px solid #86efac'
+        }}>
+          <div style={{
+            fontSize: '13px',
+            fontWeight: '700',
+            color: '#059669',
+            marginBottom: '8px'
+          }}>
+            🛠️ Preuves d'Intervention
+          </div>
+          <ArtisanProofCell 
+            beforePhotoUrl={ticket.beforePhotoUrl}
+            afterPhotoUrl={ticket.afterPhotoUrl}
+          />
+        </div>
+      )}
+
+      {/* Planification */}
+      {ticket.ticketType === 'planifier' && ticket.scheduledDate && (
+        <div style={{
+          backgroundColor: '#fef3c7',
+          padding: '10px',
+          borderRadius: '6px',
+          marginTop: '10px',
+          border: '1px solid #fbbf24'
+        }}>
+          <div style={{ fontSize: '13px', fontWeight: '600', color: '#92400e' }}>
+            📅 Planifié: {ticket.scheduledDate}
+            {ticket.scheduledTime && ` à ${ticket.scheduledTime}`}
+          </div>
+        </div>
+      )}
+
       {/* Infos */}
       <div className={styles.mobileCardInfo}>
-        <div className={styles.mobileCardInfoItem}>
-          <span className={styles.mobileCardInfoLabel}>📍 Lieu:</span>
-          <span>{ticket.location || 'N/A'}</span>
-        </div>
-        
-        {ticket.ticketType === 'planifier' && ticket.scheduledDate && (
-          <>
-            <div className={styles.mobileCardInfoItem}>
-              <span className={styles.mobileCardInfoLabel}>📅 Date:</span>
-              <span>{ticket.scheduledDate}</span>
-            </div>
-            {ticket.scheduledTime && (
-              <div className={styles.mobileCardInfoItem}>
-                <span className={styles.mobileCardInfoLabel}>⏰ Heure:</span>
-                <span>{ticket.scheduledTime}</span>
-              </div>
-            )}
-          </>
-        )}
-
         <div className={styles.mobileCardInfoItem}>
           <span className={styles.mobileCardInfoLabel}>👤 Assigné à:</span>
           <span>
@@ -671,41 +712,31 @@ function MobileTicketCard({ ticket, artisans, onAssign, onExternalize }) {
       </div>
 
       {/* Actions */}
-      {!isCompleted && (
+      {!isCompleted && !isExternalized && (
         <div className={styles.mobileCardActions}>
-          {!isExternalized && (
-            <select 
-              onChange={handleAssign} 
-              value={ticket.assignedToId || ""}
-              style={{
-                backgroundColor: ticket.assignedToName ? '#059669' : '#005596',
-                color: 'white',
-                fontWeight: '600'
-              }}
-            >
-              <option value="" disabled>
-                {ticket.assignedToName ? `✓ ${ticket.assignedToName}` : '👨‍🔧 Assigner à un artisan...'}
+          <select 
+            onChange={handleAssign} 
+            value={ticket.assignedToId || ""}
+            style={{
+              backgroundColor: ticket.assignedToName ? '#059669' : '#005596',
+              color: 'white',
+              fontWeight: '600',
+              width: '100%',
+              padding: '12px',
+              borderRadius: '8px',
+              border: 'none',
+              fontSize: '14px'
+            }}
+          >
+            <option value="" disabled>
+              {ticket.assignedToName ? `✓ ${ticket.assignedToName}` : '👨‍🔧 Assigner à un artisan...'}
+            </option>
+            {artisans.map(artisan => (
+              <option key={artisan.id} value={artisan.id}>
+                {artisan.prenom} ({artisan.specialite})
               </option>
-              {artisans.map(artisan => (
-                <option key={artisan.id} value={artisan.id}>
-                  {artisan.prenom} ({artisan.specialite})
-                </option>
-              ))}
-            </select>
-          )}
-
-          {!isExternalized && (
-            <button
-              onClick={() => onExternalize(ticket)}
-              style={{
-                backgroundColor: '#7c3aed',
-                color: 'white',
-                fontWeight: '600'
-              }}
-            >
-              🌐 Externaliser ce ticket
-            </button>
-          )}
+            ))}
+          </select>
         </div>
       )}
     </div>
