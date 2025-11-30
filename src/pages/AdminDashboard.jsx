@@ -1,6 +1,11 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { logoutUser } from '../../src/services/authService';
+import { logoutUser } from '../services/authService';
+
+// --- IMPORTS POUR LES NOTIFICATIONS (NOUVEAU) ---
+import { requestForToken, onMessageListener, db } from '../firebase';
+import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { useAuth } from '../contexts/AuthContext'; 
 
 // Hooks
 import { useAdminData } from '../hooks/admin/useAdminData';
@@ -13,7 +18,7 @@ import StudentsTab from '../components/admin/tabs/StudentsTab';
 import StatisticsTab from '../components/admin/tabs/StatisticsTab';
 import LocalsTab from '../components/admin/tabs/LocalsTab';
 import ExternalizeModal from '../components/admin/modals/ExternalizeModal';
-import BuildingView from '../components/admin/BuildingView'; // Votre composant 2D
+import BuildingView from '../components/admin/BuildingView'; 
 
 // Styles
 import styles from '../components/admin/styles/AdminDashboard.module.css';
@@ -30,6 +35,9 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('tickets');
   
+  // Pour récupérer l'utilisateur connecté (Admin)
+  const { currentUser } = useAuth(); 
+
   // --- NOUVEAUX ÉTATS POUR LA VUE 2D ---
   const [viewMode, setViewMode] = useState('2d'); // '2d' ou 'list'
   const [selectedBuilding, setSelectedBuilding] = useState(null);
@@ -54,17 +62,46 @@ export default function AdminDashboard() {
     actions
   } = useAdminData();
 
+  // --- LOGIQUE NOTIFICATIONS (NOUVEAU) ---
+  
+  // Écouter les messages quand l'app est ouverte (Premier plan)
+  useEffect(() => {
+    onMessageListener().then(payload => {
+      // Vous pouvez remplacer ceci par un joli Toast si vous préférez
+      alert(`🔔 Nouveau message : ${payload.notification.title}`);
+      // Optionnel : Recharger les données pour voir le nouveau ticket
+      if (actions.refetch) actions.refetch(); 
+    }).catch(err => console.log('Erreur listener:', err));
+  }, [actions]);
+
+  // Fonction pour activer les notifications sur cet appareil
+  const enableNotifications = async () => {
+    const token = await requestForToken();
+    
+    if (token && currentUser) {
+      try {
+        const userRef = doc(db, "users", currentUser.uid);
+        // On ajoute le token à la liste sans effacer les autres (arrayUnion)
+        await updateDoc(userRef, {
+          fcmTokens: arrayUnion(token)
+        });
+        alert("✅ Notifications activées pour cet appareil !");
+      } catch (error) {
+        console.error("Erreur sauvegarde token:", error);
+        alert("Erreur lors de l'enregistrement du token.");
+      }
+    } else {
+      alert("❌ Impossible d'activer les notifications. Vérifiez les permissions.");
+    }
+  };
+
   // --- 2. INTELLIGENCE : Calculer les bâtiments depuis les tickets ---
-  // On utilise useMemo pour ne pas recalculer à chaque clic
   const buildingsFromData = useMemo(() => {
     if (!tickets) return [];
 
     const buildingMap = {};
 
     tickets.forEach(ticket => {
-      // Extraction intelligente du nom du bâtiment depuis le lieu
-      // Ex: "Bâtiment A - Chambre 1" -> "Bâtiment A"
-      // Si pas de tiret, on prend tout le lieu
       const buildingName = ticket.location ? ticket.location.split(' - ')[0].trim() : "Autre";
 
       if (!buildingMap[buildingName]) {
@@ -76,10 +113,9 @@ export default function AdminDashboard() {
         };
       }
 
-      // Si le ticket n'est pas terminé, c'est un incident actif
       if (ticket.statut !== 'Terminé' && ticket.statut !== 'Clôturé') {
         buildingMap[buildingName].incidents += 1;
-        buildingMap[buildingName].status = 'alert'; // Devient ROUGE
+        buildingMap[buildingName].status = 'alert';
       }
     });
 
@@ -104,7 +140,6 @@ export default function AdminDashboard() {
     setViewMode('list');
   };
 
-  // ... (Vos anciens handlers : Assign, Externalize...)
   const handleAssignTicket = useCallback(async (ticketId, artisanId) => {
     if (!artisanId) return;
     const selectedArtisan = artisans.find(a => a.id === artisanId);
@@ -113,11 +148,9 @@ export default function AdminDashboard() {
       await actions.assignTicket(ticketId, artisanId);
     } catch (err) {
       console.error('Erreur assignation:', err);
-      // Afficher un message visuel pour l'utilisateur
       const errorMsg = err.message?.includes('réseau') || err.message?.includes('offline') 
         ? '❌ Erreur réseau - Vérifiez votre connexion'
         : '❌ Erreur lors de l\'assignation';
-      // Créer une notification visuelle temporaire
       const notification = document.createElement('div');
       notification.style.cssText = 'position:fixed;top:20px;right:20px;background:#ef4444;color:white;padding:15px 20px;border-radius:8px;z-index:9999;font-weight:bold;box-shadow:0 4px 12px rgba(0,0,0,0.3)';
       notification.textContent = errorMsg;
@@ -139,7 +172,6 @@ export default function AdminDashboard() {
   }, [externalizeModal.ticket, actions, handleCloseExternalizeModal]);
 
 
-  // Rendu Loading / Error
   if (loading) return <div className={styles.loadingContainer}>Chargement...</div>;
   if (error) return <div className={styles.loadingContainer}>Erreur: {error}</div>;
 
@@ -166,7 +198,7 @@ export default function AdminDashboard() {
         
         {/* HEADER DYNAMIQUE */}
         <header className={styles.header}>
-          <div style={{display:'flex', flexDirection:'column'}}>
+          <div style={{display:'flex', flexDirection:'column', gap: '5px'}}>
              <h1 className={styles.pageTitle}>{TAB_TITLES[activeTab]}</h1>
              {/* Fil d'ariane si filtré */}
              {selectedBuilding && activeTab === 'tickets' && (
@@ -179,29 +211,54 @@ export default function AdminDashboard() {
              )}
           </div>
 
-          {/* SWITCH VUE (Visible uniquement sur l'onglet Tickets) */}
-          {activeTab === 'tickets' && (
-            <div style={{ display:'flex', background: 'white', padding: '4px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-              <button 
-                onClick={() => setViewMode('list')}
-                style={{
-                  padding: '8px 16px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontWeight: '600',
-                  background: viewMode === 'list' ? '#3b82f6' : 'transparent', color: viewMode === 'list' ? 'white' : '#6b7280'
-                }}
-              >
-                Liste
-              </button>
-              <button 
-                onClick={() => { setViewMode('2d'); setSelectedBuilding(null); }}
-                style={{
-                  padding: '8px 16px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontWeight: '600',
-                  background: viewMode === '2d' ? '#3b82f6' : 'transparent', color: viewMode === '2d' ? 'white' : '#6b7280'
-                }}
-              >
-                Vue 2D
-              </button>
-            </div>
-          )}
+          <div style={{display: 'flex', gap: '10px', alignItems: 'center'}}>
+            
+            {/* BOUTON NOTIFICATIONS (NOUVEAU) */}
+            <button 
+              onClick={enableNotifications} 
+              style={{
+                padding: '8px 12px', 
+                background: '#e11d48', // Rouge vif pour être visible
+                color: 'white', 
+                border: 'none', 
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                fontSize: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                boxShadow: '0 2px 5px rgba(225, 29, 72, 0.3)'
+              }}
+              title="Recevoir les alertes sur cet appareil"
+            >
+              🔔 Activer Notifs
+            </button>
+
+            {/* SWITCH VUE (Visible uniquement sur l'onglet Tickets) */}
+            {activeTab === 'tickets' && (
+              <div style={{ display:'flex', background: 'white', padding: '4px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                <button 
+                  onClick={() => setViewMode('list')}
+                  style={{
+                    padding: '8px 16px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontWeight: '600',
+                    background: viewMode === 'list' ? '#3b82f6' : 'transparent', color: viewMode === 'list' ? 'white' : '#6b7280'
+                  }}
+                >
+                  Liste
+                </button>
+                <button 
+                  onClick={() => { setViewMode('2d'); setSelectedBuilding(null); }}
+                  style={{
+                    padding: '8px 16px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontWeight: '600',
+                    background: viewMode === '2d' ? '#3b82f6' : 'transparent', color: viewMode === '2d' ? 'white' : '#6b7280'
+                  }}
+                >
+                  Vue 2D
+                </button>
+              </div>
+            )}
+          </div>
         </header>
 
         {/* CONTENU PRINCIPAL */}
@@ -222,9 +279,9 @@ export default function AdminDashboard() {
               )}
             </div>
           ) : (
-            // --- VUE LISTE (Vos composants existants avec données filtrées) ---
+            // --- VUE LISTE ---
             <TicketsTab
-              tickets={filteredTickets} // On passe la liste filtrée !
+              tickets={filteredTickets}
               artisans={artisans}
               onAssign={handleAssignTicket}
               onExternalize={handleOpenExternalizeModal}
@@ -242,7 +299,7 @@ export default function AdminDashboard() {
 
       </main>
 
-      {/* Bottom Navigation (Mobile Only - Alternative) */}
+      {/* Bottom Navigation (Mobile Only) */}
       <nav className={styles.bottomNav}>
         <button 
           className={`${styles.bottomNavButton} ${activeTab === 'tickets' ? styles.active : ''}`}
