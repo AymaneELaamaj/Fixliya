@@ -4,9 +4,9 @@ import { getArtisanUnreadCount } from '../../../services/notificationService';
 import { useAuth } from '../../../contexts/AuthContext';
 
 /**
- * Barre latérale de navigation pour l'artisan
+ * Barre latérale de navigation pour l'artisan - Version Tailwind CSS
  */
-export const Sidebar = ({ activeTab, setActiveTab, onLogout, styles, isMobile }) => {
+export const Sidebar = ({ activeTab, setActiveTab, onLogout, isMobile }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -20,131 +20,61 @@ export const Sidebar = ({ activeTab, setActiveTab, onLogout, styles, isMobile })
     };
 
     loadUnreadCount();
-    // Refresh every 30 seconds
     const interval = setInterval(loadUnreadCount, 30000);
     return () => clearInterval(interval);
   }, [user]);
+
   if (isMobile) {
     // Navbar mobile en bas
     return (
-      <nav style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: '65px',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        display: 'flex',
-        justifyContent: 'space-around',
-        alignItems: 'center',
-        padding: '0 10px',
-        boxShadow: '0 -4px 12px rgba(0,0,0,0.15)',
-        zIndex: 1000
-      }}>
+      <nav className="fixed bottom-0 left-0 right-0 h-16 bg-gradient-to-r from-primary to-primary-dark flex justify-around items-center px-3 shadow-strong z-50">
         <button
           onClick={() => setActiveTab('todo')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: activeTab === 'todo' ? '#fff' : 'rgba(255,255,255,0.7)',
-            fontSize: '12px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '4px',
-            cursor: 'pointer',
-            padding: '8px 12px',
-            borderRadius: '8px',
-            backgroundColor: activeTab === 'todo' ? 'rgba(255,255,255,0.2)' : 'transparent',
-            fontWeight: activeTab === 'todo' ? '700' : '500',
-            transition: 'all 0.3s ease'
-          }}
+          className={`
+            flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all
+            ${activeTab === 'todo' 
+              ? 'bg-white bg-opacity-20 text-white font-bold' 
+              : 'text-white text-opacity-70 font-medium'
+            }
+          `}
         >
-          <span style={{ fontSize: '20px' }}>📋</span>
-          <span>Ma Journée</span>
+          <span className="text-xl">📋</span>
+          <span className="text-xs">Ma Journée</span>
         </button>
+
         <button
           onClick={() => setActiveTab('history')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: activeTab === 'history' ? '#fff' : 'rgba(255,255,255,0.7)',
-            fontSize: '12px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '4px',
-            cursor: 'pointer',
-            padding: '8px 12px',
-            borderRadius: '8px',
-            backgroundColor: activeTab === 'history' ? 'rgba(255,255,255,0.2)' : 'transparent',
-            fontWeight: activeTab === 'history' ? '700' : '500',
-            transition: 'all 0.3s ease'
-          }}
+          className={`
+            flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all
+            ${activeTab === 'history' 
+              ? 'bg-white bg-opacity-20 text-white font-bold' 
+              : 'text-white text-opacity-70 font-medium'
+            }
+          `}
         >
-          <span style={{ fontSize: '20px' }}>📊</span>
-          <span>Historique</span>
+          <span className="text-xl">📊</span>
+          <span className="text-xs">Historique</span>
         </button>
+
         <button
           onClick={() => navigate('/app/artisan/notifications')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: 'rgba(255,255,255,0.7)',
-            fontSize: '12px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '4px',
-            cursor: 'pointer',
-            padding: '8px 12px',
-            borderRadius: '8px',
-            position: 'relative',
-            transition: 'all 0.3s ease'
-          }}
+          className="relative flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all text-white text-opacity-70 font-medium hover:bg-white hover:bg-opacity-10"
         >
-          <span style={{ fontSize: '20px' }}>🔔</span>
-          <span>Notifications</span>
+          <span className="text-xl">🔔</span>
+          <span className="text-xs">Notifications</span>
           {unreadCount > 0 && (
-            <span style={{
-              position: 'absolute',
-              top: '5px',
-              right: '8px',
-              backgroundColor: '#ef4444',
-              color: '#fff',
-              borderRadius: '50%',
-              width: '18px',
-              height: '18px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '10px',
-              fontWeight: '700',
-              border: '2px solid #667eea'
-            }}>
+            <span className="absolute -top-1 -right-1 w-5 h-5 bg-danger rounded-full text-white text-[10px] font-bold flex items-center justify-center">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
         </button>
+
         <button
           onClick={onLogout}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: 'rgba(255,255,255,0.7)',
-            fontSize: '12px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '4px',
-            cursor: 'pointer',
-            padding: '8px 12px',
-            borderRadius: '8px',
-            transition: 'all 0.3s ease'
-          }}
+          className="flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all text-white text-opacity-70 font-medium hover:bg-red-500 hover:bg-opacity-20"
         >
-          <span style={{ fontSize: '20px' }}>🚪</span>
-          <span>Déconnexion</span>
+          <span className="text-xl">🚪</span>
+          <span className="text-xs">Déconnexion</span>
         </button>
       </nav>
     );
@@ -152,58 +82,69 @@ export const Sidebar = ({ activeTab, setActiveTab, onLogout, styles, isMobile })
 
   // Desktop sidebar
   return (
-    <aside style={styles.sidebar}>
-      <div style={styles.sidebarHeader}>
-        <h2 style={styles.sidebarTitle}>🛠️ Artisan</h2>
+    <aside className="fixed top-0 left-0 h-full w-64 bg-gradient-to-b from-primary to-primary-dark text-white shadow-strong flex flex-col z-40">
+      {/* Header */}
+      <div className="p-6 border-b border-white border-opacity-20">
+        <h2 className="text-xl font-bold flex items-center gap-2">
+          <span>🛠️</span>
+          <span>Artisan</span>
+        </h2>
       </div>
-      <nav style={styles.nav}>
+
+      {/* Navigation */}
+      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
         <button
           onClick={() => setActiveTab('todo')}
-          style={activeTab === 'todo' ? { ...styles.navButton, ...styles.navButtonActive } : styles.navButton}
+          className={`
+            w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all
+            ${activeTab === 'todo' 
+              ? 'bg-white bg-opacity-20 shadow-md font-semibold' 
+              : 'hover:bg-white hover:bg-opacity-10 font-medium'
+            }
+          `}
         >
-          📋 Ma Journée
+          <span className="text-2xl">📋</span>
+          <span>Ma Journée</span>
         </button>
+
         <button
           onClick={() => setActiveTab('history')}
-          style={activeTab === 'history' ? { ...styles.navButton, ...styles.navButtonActive } : styles.navButton}
+          className={`
+            w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all
+            ${activeTab === 'history' 
+              ? 'bg-white bg-opacity-20 shadow-md font-semibold' 
+              : 'hover:bg-white hover:bg-opacity-10 font-medium'
+            }
+          `}
         >
-          📊 Historique & Avis
+          <span className="text-2xl">📊</span>
+          <span>Historique & Avis</span>
         </button>
+
         <button
           onClick={() => navigate('/app/artisan/notifications')}
-          style={{
-            ...styles.navButton,
-            position: 'relative',
-            marginTop: '10px'
-          }}
+          className="relative w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all hover:bg-white hover:bg-opacity-10 font-medium mt-2"
         >
-          🔔 Notifications
+          <span className="text-2xl">🔔</span>
+          <span className="flex-1 text-left">Notifications</span>
           {unreadCount > 0 && (
-            <span style={{
-              position: 'absolute',
-              top: '8px',
-              right: '8px',
-              backgroundColor: '#ef4444',
-              color: '#fff',
-              borderRadius: '50%',
-              width: '22px',
-              height: '22px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '11px',
-              fontWeight: '700',
-              border: '2px solid #fff',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-            }}>
+            <span className="w-6 h-6 bg-danger rounded-full text-xs font-bold flex items-center justify-center">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
         </button>
       </nav>
-      <button onClick={onLogout} style={styles.logoutBtnSidebar}>
-        🚪 Déconnexion
-      </button>
+
+      {/* Footer - Logout */}
+      <div className="p-4 border-t border-white border-opacity-20">
+        <button
+          onClick={onLogout}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-red-500 bg-opacity-80 hover:bg-opacity-100 transition-all font-semibold"
+        >
+          <span className="text-2xl">🚪</span>
+          <span>Déconnexion</span>
+        </button>
+      </div>
     </aside>
   );
 };

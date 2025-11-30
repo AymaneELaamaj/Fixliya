@@ -10,14 +10,14 @@ export default function CreateTicket() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
-  // --- États du formulaire ---
+  // États du formulaire
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [ticketType, setTicketType] = useState("urgent");
   const [scheduledDate, setScheduledDate] = useState("");
   const [scheduledTime, setScheduledTime] = useState("");
   
-  // Photo (Tableau limité à 1 élément)
+  // Photo (1 élément max)
   const [photos, setPhotos] = useState([]); 
   const [isCameraActive, setIsCameraActive] = useState(false);
   
@@ -35,17 +35,17 @@ export default function CreateTicket() {
   const [isAccountDisabled, setIsAccountDisabled] = useState(false);
   const [userData, setUserData] = useState(null);
 
-  // --- Références ---
+  // Références
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
-  const streamRef = useRef(null); // Stocke le flux caméra
-  const audioTimerRef = useRef(null); // Minuteur audio
+  const streamRef = useRef(null);
+  const audioTimerRef = useRef(null);
 
   const categories = ["Plomberie", "Électricité", "Ménage", "Wifi", "Autre"];
 
-  // 1. Charger l'utilisateur
+  // Charger l'utilisateur
   useEffect(() => {
     const fetchUser = async () => {
       if (auth.currentUser) {
@@ -61,7 +61,7 @@ export default function CreateTicket() {
     fetchUser();
   }, []);
 
-  // 2. Charger les lieux
+  // Charger les lieux
   useEffect(() => {
     const fetchLocals = async () => {
       try {
@@ -76,30 +76,28 @@ export default function CreateTicket() {
     fetchLocals();
   }, []);
 
-  // 3. Nettoyage mémoire
+  // Nettoyage mémoire
   useEffect(() => {
     return () => {
       photos.forEach(photo => { if (photo.preview) URL.revokeObjectURL(photo.preview); });
       if (audioTimerRef.current) clearTimeout(audioTimerRef.current);
-      stopCamera(); // Sécurité
+      stopCamera();
     };
   }, []); // eslint-disable-line
 
-  // --- LOGIQUE CAMÉRA CORRIGÉE ---
-
-  // Étape A : Demander l'accès et stocker le flux
+  // LOGIQUE CAMÉRA
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { 
-          facingMode: "environment", // Caméra arrière
+          facingMode: "environment",
           width: { ideal: 1280 }, 
           height: { ideal: 720 } 
         }
       });
       
       streamRef.current = stream;
-      setIsCameraActive(true); // Cela va déclencher le useEffect ci-dessous
+      setIsCameraActive(true);
       
     } catch (err) {
       console.error("Erreur accès caméra:", err);
@@ -107,7 +105,6 @@ export default function CreateTicket() {
     }
   };
 
-  // Étape B : Attacher le flux à la balise <video> une fois qu'elle est affichée (Le FIX est ici)
   useEffect(() => {
     if (isCameraActive && videoRef.current && streamRef.current) {
       videoRef.current.srcObject = streamRef.current;
@@ -115,11 +112,9 @@ export default function CreateTicket() {
     }
   }, [isCameraActive]);
 
-  // Étape C : Capturer
   const capturePhoto = () => {
     if (videoRef.current && canvasRef.current) {
       const context = canvasRef.current.getContext('2d');
-      // Dessiner l'image vidéo sur le canvas
       canvasRef.current.width = videoRef.current.videoWidth;
       canvasRef.current.height = videoRef.current.videoHeight;
       context.drawImage(videoRef.current, 0, 0);
@@ -132,14 +127,12 @@ export default function CreateTicket() {
           preview: previewUrl,
           source: 'camera'
         };
-        // On remplace le tableau existant (1 seule photo max)
         setPhotos([newPhoto]); 
         stopCamera();
       }, 'image/jpeg', 0.8);
     }
   };
 
-  // Étape D : Arrêter
   const stopCamera = () => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
@@ -156,8 +149,7 @@ export default function CreateTicket() {
     setPhotos([]);
   };
 
-  // --- LOGIQUE AUDIO (10s Max) ---
-
+  // LOGIQUE AUDIO (10s Max)
   const startAudioRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -177,13 +169,13 @@ export default function CreateTicket() {
       mediaRecorderRef.current.start();
       setIsRecording(true);
 
-      // Arrêt automatique après 10 secondes
       audioTimerRef.current = setTimeout(() => {
         stopAudioRecording();
       }, 10000);
 
     } catch (err) {
       console.error('Erreur microphone:', err);
+      alert("Impossible d'accéder au microphone. Vérifiez les permissions.");
     }
   };
 
@@ -203,12 +195,11 @@ export default function CreateTicket() {
 
   const getAudioURL = () => audioFile ? URL.createObjectURL(audioFile) : null;
 
-  // --- SOUMISSION ---
+  // SOUMISSION
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!category || !locationType) return;
     
-    // Validation minimale
     if (locationType === "building" && (!selectedLocal || !roomNumber)) return;
     if (locationType === "common_area" && !selectedLocal) return;
     if (locationType === "other" && !otherLocation.trim()) return;
@@ -216,7 +207,6 @@ export default function CreateTicket() {
 
     setLoading(true);
     try {
-      // Construction adresse
       let location = "";
       let localId = null;
       let localName = null;
@@ -275,233 +265,372 @@ export default function CreateTicket() {
     }
   };
 
-  // --- RENDER ---
+  // RENDER
+  if (isAccountDisabled) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary to-secondary flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-strong p-8 max-w-md text-center">
+          <div className="text-6xl mb-4">🔒</div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Compte Désactivé</h2>
+          <p className="text-gray-600">Votre compte a été temporairement désactivé. Contactez l'administration.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div style={styles.container}>
-      {isAccountDisabled ? (
-        <div style={styles.disabledCard}><h2>Compte Désactivé</h2></div>
-      ) : (
-        <div style={styles.card}>
-        <h2 style={styles.title}>🔧 Nouveau Signalement</h2>
-        
-        <form onSubmit={handleSubmit} style={styles.form}>
-          
-          {/* Catégories */}
-          <label style={styles.label}>Type de panne :</label>
-          <div style={styles.grid}>
-            {categories.map((cat) => (
-              <button type="button" key={cat} onClick={() => setCategory(cat)}
-                style={category === cat ? styles.catButtonActive : styles.catButton}>
-                {cat}
-              </button>
-            ))}
+    <div className="min-h-screen bg-gradient-to-br from-primary via-primary-dark to-secondary py-8 px-4">
+      <div className="max-w-2xl mx-auto">
+        {/* Card principale */}
+        <div className="bg-white rounded-2xl shadow-strong p-6 md:p-8 animate-fade-in">
+          {/* Titre */}
+          <div className="text-center mb-6">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">
+              🔧 Nouveau Signalement
+            </h2>
+            <p className="text-gray-500 text-sm">
+              Décrivez le problème pour une intervention rapide
+            </p>
           </div>
 
-          {/* Localisation */}
-          <label style={styles.label}>📍 Localisation :</label>
-           <div style={styles.locationGrid}>
-            <button type="button" onClick={() => { setLocationType("building"); setSelectedLocal(null); }}
-              style={locationType === "building" ? styles.locationButtonActive : styles.locationButton}>🏢 Bâtiment</button>
-            <button type="button" onClick={() => { setLocationType("common_area"); setSelectedLocal(null); }}
-              style={locationType === "common_area" ? styles.locationButtonActive : styles.locationButton}>🏛️ Espace Commun</button>
-            <button type="button" onClick={() => { setLocationType("other"); setSelectedLocal(null); }}
-              style={locationType === "other" ? styles.locationButtonActive : styles.locationButton}>📝 Autre</button>
-          </div>
-
-          {locationType === "building" && (
-            <div style={styles.locationSection}>
-                <select style={styles.select} value={selectedLocal?.id || ""} onChange={(e) => setSelectedLocal(buildings.find(b => b.id === e.target.value))}>
-                    <option value="">-- Choisir Bâtiment --</option>
-                    {buildings.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                </select>
-                {selectedLocal && <input style={{...styles.selectInput, marginTop: 10}} placeholder="Numéro Chambre" value={roomNumber} onChange={e => setRoomNumber(e.target.value)} required />}
-            </div>
-          )}
-           {locationType === "common_area" && (
-            <div style={styles.locationSection}>
-                <select style={styles.select} value={selectedLocal?.id || ""} onChange={(e) => setSelectedLocal(commonAreas.find(b => b.id === e.target.value))}>
-                    <option value="">-- Choisir Espace --</option>
-                    {commonAreas.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                </select>
-            </div>
-          )}
-          {locationType === "other" && (
-             <input style={styles.selectInput} placeholder="Décrire l'endroit..." value={otherLocation} onChange={e => setOtherLocation(e.target.value)} required />
-          )}
-
-          {/* Urgence */}
-          <div style={{marginTop: 15, ...styles.typeGrid}}>
-             <button type="button" onClick={() => setTicketType("urgent")} style={ticketType === "urgent" ? styles.typeButtonActive : styles.typeButton}>🚨 Urgent</button>
-             <button type="button" onClick={() => setTicketType("planifier")} style={ticketType === "planifier" ? styles.typeButtonActive : styles.typeButton}>📅 Planifier</button>
-          </div>
-          
-           {ticketType === "planifier" && (
-            <div style={styles.schedulingSection}>
-              <div style={styles.row}>
-                <input type="date" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} style={styles.select} required />
-                <input type="time" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)} style={styles.select} required />
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* CATÉGORIES */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-3">
+                Type de panne :
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {categories.map((cat) => (
+                  <button
+                    type="button"
+                    key={cat}
+                    onClick={() => setCategory(cat)}
+                    className={`
+                      py-3 px-4 rounded-xl font-medium text-sm transition-all duration-200
+                      ${category === cat 
+                        ? 'bg-primary text-white shadow-md scale-105 border-2 border-primary' 
+                        : 'bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100'
+                      }
+                    `}
+                  >
+                    {cat}
+                  </button>
+                ))}
               </div>
             </div>
-          )}
 
-          {/* Description */}
-          <textarea placeholder="Description du problème..." value={description} onChange={(e) => setDescription(e.target.value)} style={styles.textarea} required />
+            {/* LOCALISATION */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-3">
+                📍 Localisation :
+              </label>
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                <button
+                  type="button"
+                  onClick={() => { setLocationType("building"); setSelectedLocal(null); }}
+                  className={`
+                    py-3 px-2 rounded-xl text-xs font-medium transition-all duration-200
+                    ${locationType === "building"
+                      ? 'bg-green-100 text-green-700 border-2 border-green-500 shadow-md'
+                      : 'bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100'
+                    }
+                  `}
+                >
+                  🏢 Bâtiment
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setLocationType("common_area"); setSelectedLocal(null); }}
+                  className={`
+                    py-3 px-2 rounded-xl text-xs font-medium transition-all duration-200
+                    ${locationType === "common_area"
+                      ? 'bg-green-100 text-green-700 border-2 border-green-500 shadow-md'
+                      : 'bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100'
+                    }
+                  `}
+                >
+                  🏛️ Espace
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setLocationType("other"); setSelectedLocal(null); }}
+                  className={`
+                    py-3 px-2 rounded-xl text-xs font-medium transition-all duration-200
+                    ${locationType === "other"
+                      ? 'bg-green-100 text-green-700 border-2 border-green-500 shadow-md'
+                      : 'bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100'
+                    }
+                  `}
+                >
+                  📝 Autre
+                </button>
+              </div>
 
-          {/* --- ZONE PHOTO (1 PHOTO) --- */}
-          <div style={styles.mediaSection}>
-            <h3 style={styles.mediaTitle}>📷 Photo (Obligatoire)</h3>
-            
-            <div style={styles.photoContainer}>
-              
-              {/* ÉTAT 1 : VIDE */}
-              {photos.length === 0 && !isCameraActive && (
-                <div style={styles.emptyPhotoState}>
-                   <div style={{fontSize: '40px', marginBottom: '10px'}}>🖼️</div>
-                   <p style={{color: '#6b7280', fontSize: '14px', marginBottom: '15px'}}>Aucune photo</p>
-                   <button type="button" onClick={startCamera} style={styles.primaryBtn}>
-                    📸 Prendre une photo
-                   </button>
+              {/* Détails localisation */}
+              {locationType === "building" && (
+                <div className="bg-gray-50 rounded-xl p-4 space-y-3 border border-gray-200">
+                  <select
+                    className="input-field"
+                    value={selectedLocal?.id || ""}
+                    onChange={(e) => setSelectedLocal(buildings.find(b => b.id === e.target.value))}
+                    required
+                  >
+                    <option value="">-- Choisir Bâtiment --</option>
+                    {buildings.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  </select>
+                  {selectedLocal && (
+                    <input
+                      className="input-field"
+                      placeholder="Numéro de chambre"
+                      value={roomNumber}
+                      onChange={e => setRoomNumber(e.target.value)}
+                      required
+                    />
+                  )}
                 </div>
               )}
 
-              {/* ÉTAT 2 : CAMÉRA ACTIVE */}
-              {isCameraActive && (
-                <div style={{width: '100%', height: '100%', position: 'relative', display: 'flex', flexDirection: 'column'}}>
-                  <video 
-                    ref={videoRef} 
-                    autoPlay 
-                    playsInline 
-                    muted 
-                    style={styles.video} 
-                  />
-                  <canvas ref={canvasRef} style={{display: 'none'}} />
-                  
-                  <div style={styles.cameraOverlay}>
-                    <button type="button" onClick={capturePhoto} style={styles.captureBtnLarge} title="Prendre la photo"></button>
-                    <button type="button" onClick={stopCamera} style={styles.closeCameraBtn}>Annuler</button>
+              {locationType === "common_area" && (
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                  <select
+                    className="input-field"
+                    value={selectedLocal?.id || ""}
+                    onChange={(e) => setSelectedLocal(commonAreas.find(b => b.id === e.target.value))}
+                    required
+                  >
+                    <option value="">-- Choisir Espace Commun --</option>
+                    {commonAreas.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  </select>
+                </div>
+              )}
+
+              {locationType === "other" && (
+                <input
+                  className="input-field"
+                  placeholder="Décrire l'endroit..."
+                  value={otherLocation}
+                  onChange={e => setOtherLocation(e.target.value)}
+                  required
+                />
+              )}
+            </div>
+
+            {/* URGENCE */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-3">
+                Priorité :
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setTicketType("urgent")}
+                  className={`
+                    py-3 px-4 rounded-xl font-medium transition-all duration-200
+                    ${ticketType === "urgent"
+                      ? 'bg-red-100 text-red-700 border-2 border-red-500 shadow-md'
+                      : 'bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100'
+                    }
+                  `}
+                >
+                  🚨 Urgent
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTicketType("planifier")}
+                  className={`
+                    py-3 px-4 rounded-xl font-medium transition-all duration-200
+                    ${ticketType === "planifier"
+                      ? 'bg-blue-100 text-blue-700 border-2 border-blue-500 shadow-md'
+                      : 'bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100'
+                    }
+                  `}
+                >
+                  📅 Planifier
+                </button>
+              </div>
+
+              {ticketType === "planifier" && (
+                <div className="mt-3 bg-blue-50 rounded-xl p-4 border border-blue-200 space-y-3">
+                  <p className="text-sm text-blue-700 font-medium">Date et heure souhaitées :</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <input
+                      type="date"
+                      value={scheduledDate}
+                      onChange={(e) => setScheduledDate(e.target.value)}
+                      className="input-field"
+                      required
+                    />
+                    <input
+                      type="time"
+                      value={scheduledTime}
+                      onChange={(e) => setScheduledTime(e.target.value)}
+                      className="input-field"
+                      required
+                    />
                   </div>
                 </div>
               )}
-
-              {/* ÉTAT 3 : PHOTO PRISE */}
-              {photos.length > 0 && !isCameraActive && (
-                <div style={{width: '100%', height: '100%', position: 'relative'}}>
-                  <img src={photos[0].preview} alt="Preuve" style={styles.finalImage} />
-                  <button type="button" onClick={deletePhoto} style={styles.retakeBtn}>
-                    🗑️ Refaire
-                  </button>
-                </div>
-              )}
-
             </div>
-          </div>
 
-          {/* --- ZONE AUDIO (10s) --- */}
-          <div style={styles.mediaSection}>
-            <h3 style={styles.mediaTitle}>🎙️ Vocal (Max 10s)</h3>
-            
-            {!audioFile ? (
-              <div style={{textAlign: 'center'}}>
-                {!isRecording ? (
-                  <button type="button" onClick={startAudioRecording} style={styles.mediaBtn}>
-                    🎤 Appuyer pour parler
-                  </button>
-                ) : (
-                  <div style={styles.recordingState}>
-                    <div style={styles.recordingDot}></div>
-                    <p style={{color: '#dc2626', fontWeight: 'bold'}}>Enregistrement... (Max 10s)</p>
-                    <button type="button" onClick={stopAudioRecording} style={styles.stopBtn}>
-                      ⏹️ Stop
+            {/* DESCRIPTION */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Description du problème :
+              </label>
+              <textarea
+                placeholder="Décrivez le problème en détail..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="input-field min-h-[100px] resize-none"
+                required
+              />
+            </div>
+
+            {/* ZONE PHOTO */}
+            <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-5 border border-gray-200">
+              <h3 className="text-base font-bold text-gray-800 mb-3 flex items-center gap-2">
+                <span>📷</span>
+                <span>Photo (Obligatoire)</span>
+              </h3>
+              
+              <div className="w-full h-64 sm:h-80 bg-gray-200 rounded-xl overflow-hidden border-2 border-dashed border-gray-400 relative">
+                {/* ÉTAT 1 : VIDE */}
+                {photos.length === 0 && !isCameraActive && (
+                  <div className="h-full flex flex-col items-center justify-center p-4">
+                    <div className="text-6xl mb-3">🖼️</div>
+                    <p className="text-gray-500 text-sm mb-4">Aucune photo</p>
+                    <button
+                      type="button"
+                      onClick={startCamera}
+                      className="btn-primary px-6 py-3"
+                    >
+                      📸 Prendre une photo
+                    </button>
+                  </div>
+                )}
+
+                {/* ÉTAT 2 : CAMÉRA ACTIVE */}
+                {isCameraActive && (
+                  <div className="h-full relative flex flex-col">
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-full object-cover"
+                    />
+                    <canvas ref={canvasRef} className="hidden" />
+                    
+                    <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/50 to-transparent flex items-center justify-center gap-4">
+                      <button
+                        type="button"
+                        onClick={capturePhoto}
+                        className="w-16 h-16 bg-white rounded-full border-4 border-gray-300 shadow-lg hover:scale-110 transition-transform"
+                        title="Capturer"
+                      />
+                      <button
+                        type="button"
+                        onClick={stopCamera}
+                        className="px-4 py-2 bg-red-500 text-white rounded-full font-medium shadow-lg hover:bg-red-600 transition-colors"
+                      >
+                        Annuler
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* ÉTAT 3 : PHOTO PRISE */}
+                {photos.length > 0 && !isCameraActive && (
+                  <div className="h-full relative">
+                    <img
+                      src={photos[0].preview}
+                      alt="Photo ticket"
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={deletePhoto}
+                      className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-red-500 text-white rounded-full font-semibold shadow-lg hover:bg-red-600 transition-colors"
+                    >
+                      🗑️ Refaire
                     </button>
                   </div>
                 )}
               </div>
-            ) : (
-              <div style={styles.audioPreview}>
-                 <audio src={getAudioURL()} controls style={{width: '100%', marginBottom: '10px'}} />
-                 <button type="button" onClick={deleteAudioRecording} style={styles.deleteAudioBtn}>
-                   🗑️ Supprimer le vocal
-                 </button>
-              </div>
-            )}
-          </div>
+            </div>
 
-          {/* Submit */}
-          <button type="submit" style={{...styles.submitBtn, opacity: loading ? 0.7 : 1}} disabled={loading}>
-            {loading ? 'Envoi...' : '🚀 Envoyer le signalement'}
-          </button>
+            {/* ZONE AUDIO */}
+            <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-2xl p-5 border border-purple-200">
+              <h3 className="text-base font-bold text-gray-800 mb-3 flex items-center gap-2">
+                <span>🎙️</span>
+                <span>Message vocal (Max 10s)</span>
+              </h3>
+              
+              {!audioFile ? (
+                <div className="text-center">
+                  {!isRecording ? (
+                    <button
+                      type="button"
+                      onClick={startAudioRecording}
+                      className="w-full py-4 bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition-all"
+                    >
+                      🎤 Appuyer pour parler
+                    </button>
+                  ) : (
+                    <div className="bg-red-50 border-2 border-red-500 rounded-xl p-5 space-y-3">
+                      <div className="flex items-center justify-center gap-3">
+                        <div className="w-4 h-4 bg-red-500 rounded-full animate-pulse"></div>
+                        <p className="text-red-600 font-bold">Enregistrement en cours...</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={stopAudioRecording}
+                        className="w-full py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors"
+                      >
+                        ⏹️ Arrêter
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-white rounded-xl p-4 space-y-3 border border-purple-200">
+                  <audio
+                    src={getAudioURL()}
+                    controls
+                    className="w-full"
+                  />
+                  <button
+                    type="button"
+                    onClick={deleteAudioRecording}
+                    className="w-full py-2 bg-white border border-red-300 text-red-600 font-medium rounded-lg hover:bg-red-50 transition-colors"
+                  >
+                    🗑️ Supprimer le vocal
+                  </button>
+                </div>
+              )}
+            </div>
 
-        </form>
+            {/* BOUTON SUBMIT */}
+            <button
+              type="submit"
+              disabled={loading || photos.length === 0}
+              className="w-full py-4 bg-gradient-to-r from-primary to-primary-dark text-white font-bold text-lg rounded-xl shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+            >
+              {loading ? (
+                <div className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span>Envoi en cours...</span>
+                </div>
+              ) : (
+                '🚀 Envoyer le signalement'
+              )}
+            </button>
+          </form>
         </div>
-      )}
+      </div>
     </div>
   );
 }
-
-const styles = {
-  container: { padding: '20px', backgroundColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', minHeight: '100vh', display: 'flex', justifyContent: 'center', paddingTop: '40px' },
-  card: { backgroundColor: 'white', padding: '25px', borderRadius: '20px', width: '100%', maxWidth: '600px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' },
-  disabledCard: { backgroundColor: 'white', padding: '40px', borderRadius: '20px', width: '100%', maxWidth: '400px', textAlign: 'center' },
-  title: { textAlign: 'center', color: '#1f2937', marginBottom: '20px', fontSize: '24px', fontWeight: '800' },
-  form: { display: 'flex', flexDirection: 'column', gap: '15px' },
-  
-  label: { fontWeight: '700', fontSize: '15px', color: '#1f2937', display: 'block' },
-  grid: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' },
-  catButton: { padding: '12px', border: '1px solid #e5e7eb', borderRadius: '10px', background: 'white' },
-  catButtonActive: { padding: '12px', border: '2px solid #667eea', borderRadius: '10px', background: '#eef2ff', color: '#667eea', fontWeight: 'bold' },
-  
-  locationGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' },
-  locationButton: { padding: '10px', border: '1px solid #e5e7eb', borderRadius: '10px', background: 'white', fontSize: '12px' },
-  locationButtonActive: { padding: '10px', border: '2px solid #10b981', borderRadius: '10px', background: '#ecfdf5', color: '#059669', fontWeight: 'bold', fontSize: '12px' },
-  
-  select: { width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #e5e7eb' },
-  selectInput: { width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #e5e7eb' },
-  textarea: { padding: '12px', borderRadius: '10px', border: '1px solid #e5e7eb', minHeight: '80px', width: '100%' },
-  
-  typeGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' },
-  typeButton: { padding: '12px', border: '1px solid #e5e7eb', borderRadius: '10px', background: 'white', fontSize: '13px' },
-  typeButtonActive: { padding: '12px', border: '2px solid #ef4444', borderRadius: '10px', background: '#fef2f2', color: '#ef4444', fontWeight: 'bold', fontSize: '13px' },
-  schedulingSection: { backgroundColor: '#f9fafb', padding: '15px', borderRadius: '10px', border: '1px solid #e5e7eb' },
-  row: { display: 'flex', gap: '10px' },
-  locationSection: { backgroundColor: '#f9fafb', padding: '15px', borderRadius: '10px', border: '1px solid #e5e7eb' },
-
-  mediaSection: { backgroundColor: '#f9fafb', padding: '15px', borderRadius: '12px', border: '1px solid #e5e7eb' },
-  mediaTitle: { margin: '0 0 10px 0', fontSize: '16px', fontWeight: '700', color: '#374151' },
-  
-  photoContainer: {
-    width: '100%',
-    height: '250px',
-    backgroundColor: '#e5e7eb',
-    borderRadius: '12px',
-    overflow: 'hidden',
-    position: 'relative',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    border: '2px dashed #9ca3af'
-  },
-  emptyPhotoState: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' },
-  primaryBtn: { padding: '10px 20px', backgroundColor: '#667eea', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' },
-  
-  video: { width: '100%', height: '100%', objectFit: 'cover' },
-  cameraOverlay: {
-    position: 'absolute', bottom: '10px', left: '0', width: '100%',
-    display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px'
-  },
-  captureBtnLarge: { width: '60px', height: '60px', borderRadius: '50%', backgroundColor: 'white', border: '4px solid #e5e7eb', cursor: 'pointer' },
-  closeCameraBtn: { padding: '8px 16px', backgroundColor: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', borderRadius: '20px', cursor: 'pointer' },
-  finalImage: { width: '100%', height: '100%', objectFit: 'cover' },
-  retakeBtn: {
-    position: 'absolute', bottom: '10px', left: '50%', transform: 'translateX(-50%)',
-    backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 5px rgba(0,0,0,0.3)'
-  },
-  
-  mediaBtn: { padding: '12px', width: '100%', backgroundColor: '#667eea', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' },
-  recordingState: { padding: '15px', backgroundColor: '#fee2e2', borderRadius: '10px', border: '1px solid #ef4444', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' },
-  recordingDot: { width: '15px', height: '15px', backgroundColor: '#dc2626', borderRadius: '50%' },
-  stopBtn: { padding: '8px 20px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' },
-  audioPreview: { backgroundColor: 'white', padding: '10px', borderRadius: '10px' },
-  deleteAudioBtn: { width: '100%', padding: '8px', backgroundColor: 'white', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '8px', cursor: 'pointer' },
-  
-  submitBtn: { padding: '16px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', border: 'none', borderRadius: '14px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer', marginTop: '10px' }
-};

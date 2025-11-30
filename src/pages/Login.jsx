@@ -1,90 +1,146 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-// [IMPORTANT] Ajoute getUserProfile dans l'import ci-dessous
 import { loginUser, getUserProfile } from "../services/authService"; 
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
     
     try {
       // 1. Connexion Auth (Firebase Auth)
       const userAuth = await loginUser(email, password);
       
       // 2. Récupération du rôle dans Firestore
-      // On utilise l'UID récupéré à l'étape 1
       const userProfile = await getUserProfile(userAuth.uid);
 
       // 3. Redirection conditionnelle selon le rôle
       if (userProfile.role === 'admin') {
-          navigate('/app/admin'); // Crée cette route si elle n'existe pas
+        navigate('/app/admin');
       } else if (userProfile.role === 'artisan') {
-          navigate('/app/artisan');
+        navigate('/app/artisan');
       } else {
-          // Par défaut (student)
-          navigate('/app/student'); 
+        navigate('/app/student'); 
       }
-
     } catch (err) {
       console.error(err);
-      // Message d'erreur un peu plus précis si le profil n'existe pas
       setError("Erreur : Identifiants incorrects ou compte introuvable.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  // ... le reste de ton JSX (return) reste identique ...
   return (
-    <div style={styles.container}>
-       {/* ... ton code JSX ... */}
-       <div style={styles.card}>
-        <h1 style={styles.title}>FixLiya</h1>
-        {error && <div style={styles.error}>{error}</div>}
-        <form onSubmit={handleLogin} style={styles.form}>
-           {/* ... tes inputs ... */}
-           <input 
-            type="email" 
-            placeholder="Email" // J'ai enlevé "étudiant" car ça peut être un admin
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            style={styles.input} 
-            required
-          />
-          <input 
-            type="password" 
-            placeholder="Mot de passe" 
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={styles.input} 
-            required
-          />
-          <button type="submit" style={styles.button}>Se connecter</button>
-        </form>
-        <p style={styles.footer}>
-          Pas encore de compte ?{' '}
-          <Link to="/register" style={styles.link}>
-            S'inscrire
-          </Link>
-        </p>
-       </div>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary via-primary-dark to-secondary p-4">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 opacity-10">
+        <div className="absolute inset-0" style={{
+          backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
+          backgroundSize: '40px 40px'
+        }} />
+      </div>
+
+      {/* Login Card */}
+      <div className="relative w-full max-w-md">
+        <div className="bg-white rounded-2xl shadow-strong p-8 md:p-10">
+          {/* Logo et titre */}
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-primary to-primary-dark rounded-full mb-4">
+              <span className="text-3xl">🏠</span>
+            </div>
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">FixLiya</h1>
+            <p className="text-gray-600">Gestion de réclamations</p>
+          </div>
+
+          {/* Message d'erreur */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm animate-fade-in">
+              <div className="flex items-start gap-2">
+                <span className="text-lg">⚠️</span>
+                <span>{error}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Formulaire */}
+          <form onSubmit={handleLogin} className="space-y-5">
+            <div>
+              <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
+                Email
+              </label>
+              <input 
+                id="email"
+                type="email" 
+                placeholder="votre@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="input-field"
+                required
+                autoComplete="email"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-2">
+                Mot de passe
+              </label>
+              <input 
+                id="password"
+                type="password" 
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="input-field"
+                required
+                autoComplete="current-password"
+              />
+            </div>
+
+            <button 
+              type="submit" 
+              disabled={loading}
+              className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <span>Connexion...</span>
+                </span>
+              ) : (
+                'Se connecter'
+              )}
+            </button>
+          </form>
+
+          {/* Lien inscription */}
+          <div className="mt-6 text-center">
+            <p className="text-gray-600 text-sm">
+              Pas encore de compte ?{' '}
+              <Link 
+                to="/register" 
+                className="text-primary font-semibold hover:text-primary-dark transition-colors"
+              >
+                S'inscrire
+              </Link>
+            </p>
+          </div>
+        </div>
+
+        {/* Footer info */}
+        <div className="mt-6 text-center text-white text-opacity-80 text-sm">
+          <p>© 2025 FixLiya - Tous droits réservés</p>
+        </div>
+      </div>
     </div>
   );
 }
-
-// ... styles ...
-const styles = {
-  container: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0f2f5' },
-  card: { width: '90%', maxWidth: '400px', backgroundColor: 'white', padding: '2rem', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', textAlign: 'center' },
-  title: { color: '#005596', marginBottom: '1.5rem', fontSize: '24px' },
-  form: { display: 'flex', flexDirection: 'column', gap: '1rem' },
-  input: { padding: '12px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '16px' },
-  button: { padding: '14px', backgroundColor: '#005596', color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: '600', cursor: 'pointer', transition: 'background 0.2s' },
-  error: { backgroundColor: '#fee2e2', color: '#991b1b', padding: '10px', borderRadius: '6px', marginBottom: '15px', fontSize: '14px' },
-  footer: { marginTop: '1.5rem', fontSize: '14px', color: '#666' },
-  link: { color: '#005596', fontWeight: 'bold', textDecoration: 'none' }
-};

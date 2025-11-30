@@ -1,6 +1,10 @@
 import React from 'react';
 import TicketCard from '../cards/TicketCard';
 
+/**
+ * Section de tickets avec en-tête et liste
+ * Tailwind CSS migration
+ */
 export default function TicketSection({ 
   title, 
   icon, 
@@ -15,14 +19,20 @@ export default function TicketSection({
   }
 
   return (
-    <div style={styles.section}>
-      <div style={styles.sectionHeader}>
-        <span style={styles.sectionIcon}>{icon}</span>
-        <span style={styles.sectionTitle}>{title}</span>
-        <span style={styles.sectionCount}>{tickets.length}</span>
+    <div className="mb-8">
+      {/* En-tête de section */}
+      <div className="flex items-center gap-3 pb-3 mb-4 border-b-2 border-gray-200">
+        <span className="text-2xl">{icon}</span>
+        <span className="flex-1 text-lg font-bold text-gray-800">
+          {title}
+        </span>
+        <span className="bg-secondary text-white text-xs font-bold px-3 py-1 rounded-full min-w-[28px] text-center">
+          {tickets.length}
+        </span>
       </div>
       
-      <div style={styles.ticketsList}>
+      {/* Liste des tickets */}
+      <div className="flex flex-col gap-4">
         {tickets.map(ticket => (
           <TicketCard
             key={ticket.id}
@@ -37,46 +47,3 @@ export default function TicketSection({
     </div>
   );
 }
-
-const styles = {
-  section: {
-    marginBottom: '30px'
-  },
-
-  sectionHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    marginBottom: '15px',
-    paddingBottom: '10px',
-    borderBottom: '2px solid #e5e7eb'
-  },
-
-  sectionIcon: {
-    fontSize: '24px'
-  },
-
-  sectionTitle: {
-    flex: 1,
-    fontSize: '18px',
-    fontWeight: 'bold',
-    color: '#1f2937'
-  },
-
-  sectionCount: {
-    backgroundColor: '#005596',
-    color: 'white',
-    fontSize: '13px',
-    fontWeight: 'bold',
-    padding: '4px 12px',
-    borderRadius: '12px',
-    minWidth: '28px',
-    textAlign: 'center'
-  },
-
-  ticketsList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '15px'
-  }
-};

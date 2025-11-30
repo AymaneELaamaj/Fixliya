@@ -22,6 +22,9 @@ import {
   artisanStyles
 } from '../components/artisan';
 
+/**
+ * Page d'accueil de l'espace artisan avec Tailwind CSS
+ */
 export default function ArtisanHome() {
   const navigate = useNavigate();
   const { activeTab, setActiveTab } = useTabs('todo');
@@ -69,7 +72,8 @@ export default function ArtisanHome() {
   };
 
   return (
-    <div style={artisanStyles.pageContainer}>
+    <div className="flex min-h-screen bg-gray-50">
+      {/* SIDEBAR */}
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -77,45 +81,32 @@ export default function ArtisanHome() {
         styles={artisanStyles}
       />
 
-      <main style={artisanStyles.mainContent}>
-        
-        {/* HEADER MODIFIÉ AVEC LE BOUTON */}
-        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
-            <Header
-            activeTab={activeTab}
-            missionsCount={missions.length}
-            historyCount={history.length}
-            styles={{...artisanStyles, header: {marginBottom: 0, borderBottom: 'none'}}} 
-            />
-            
-            <button 
-            onClick={enableNotifications}
-            style={{
-                padding: '10px 15px',
-                backgroundColor: '#059669', // Vert pour l'artisan
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
-            }}
-            >
-            🔔 Activer Alertes
-            </button>
-        </div>
-        <div style={{borderBottom: '2px solid #e5e7eb', marginBottom: '30px'}}></div>
-
+      {/* MAIN CONTENT */}
+      <main className={`
+        flex-1 transition-all duration-300
+        ${isMobile ? 'ml-0 p-4 pb-20' : 'ml-64 p-8'}
+      `}>
+        <Header
+          activeTab={activeTab}
+          missionsCount={missions.length}
+          historyCount={history.length}
+          styles={artisanStyles}
+          isMobile={isMobile}
+        />
 
         {loading ? (
-          <p style={{ textAlign: 'center', marginTop: '20px', color: '#666' }}>Chargement...</p>
+          <div className="flex items-center justify-center mt-8">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className={`text-gray-600 ${isMobile ? 'text-sm' : 'text-base'}`}>
+                Chargement...
+              </p>
+            </div>
+          </div>
         ) : (
           <>
             {activeTab === 'todo' && (
-              <div style={artisanStyles.section}>
+              <div className="mt-6">
                 {missions.length === 0 ? (
                   <EmptyState
                     icon="☕"
@@ -124,7 +115,10 @@ export default function ArtisanHome() {
                     styles={artisanStyles}
                   />
                 ) : (
-                  <div style={artisanStyles.cardGrid}>
+                  <div className={`
+                    grid gap-5
+                    ${isMobile ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3'}
+                  `}>
                     {missions.map(mission => (
                       <MissionCard
                         key={mission.id}
@@ -140,7 +134,7 @@ export default function ArtisanHome() {
             )}
 
             {activeTab === 'history' && (
-              <div style={artisanStyles.section}>
+              <div className="mt-6">
                 {history.length === 0 ? (
                   <EmptyState
                     icon="📭"
@@ -150,10 +144,21 @@ export default function ArtisanHome() {
                   />
                 ) : (
                   <>
-                    <HistoryStatsBar history={history} styles={artisanStyles} />
-                    <div style={artisanStyles.historyGrid}>
+                    <HistoryStatsBar 
+                      history={history} 
+                      styles={artisanStyles} 
+                      isMobile={isMobile} 
+                    />
+                    <div className={`
+                      grid gap-4 mt-5
+                      ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}
+                    `}>
                       {history.map(item => (
-                        <HistoryCard key={item.id} item={item} styles={artisanStyles} />
+                        <HistoryCard 
+                          key={item.id} 
+                          item={item} 
+                          styles={artisanStyles} 
+                        />
                       ))}
                     </div>
                   </>

@@ -17,7 +17,9 @@ export default function StudentSidebar({
   // Détection du mode mobile
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768);
+      const mobile = window.innerWidth <= 768;
+      setIsMobile(mobile);
+      if (!mobile) setIsMobileOpen(false);
     };
 
     window.addEventListener('resize', handleResize);
@@ -43,7 +45,7 @@ export default function StudentSidebar({
       icon: '🔔',
       path: '/app/student/notifications',
       badge: unreadNotifications > 0 ? unreadNotifications : null,
-      badgeColor: '#ef4444'
+      badgeColor: 'danger'
     },
     {
       id: 'history',
@@ -76,334 +78,124 @@ export default function StudentSidebar({
   return (
     <>
       {/* Mobile Hamburger Button */}
-      <button
-        onClick={() => setIsMobileOpen(!isMobileOpen)}
-        style={{
-          ...styles.mobileToggle,
-          display: isMobile ? 'block' : 'none'
-        }}
-      >
-        {isMobileOpen ? '✕' : '☰'}
-      </button>
+      {isMobile && (
+        <button
+          onClick={() => setIsMobileOpen(!isMobileOpen)}
+          className="fixed top-4 left-4 z-50 lg:hidden bg-white p-3 rounded-lg shadow-medium hover:shadow-strong transition-shadow"
+          aria-label="Toggle menu"
+        >
+          <span className="text-2xl">{isMobileOpen ? '✕' : '☰'}</span>
+        </button>
+      )}
 
       {/* Overlay pour mobile */}
-      {isMobileOpen && (
+      {isMobileOpen && isMobile && (
         <div 
-          style={styles.overlay} 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden animate-fade-in"
           onClick={() => setIsMobileOpen(false)}
         />
       )}
 
       {/* Sidebar */}
-      <aside style={{
-        ...styles.sidebar,
-        width: isMobile ? '260px' : (isCollapsed ? '80px' : '260px'),
-        transform: isMobile ? (isMobileOpen ? 'translateX(0)' : 'translateX(-100%)') : 'translateX(0)'
-      }}>
+      <aside className={`
+        fixed top-0 left-0 h-full bg-gradient-to-b from-primary to-primary-dark text-white z-40
+        transition-all duration-300 ease-in-out
+        ${isMobile ? (isMobileOpen ? 'translate-x-0' : '-translate-x-full') : 'translate-x-0'}
+        ${isCollapsed && !isMobile ? 'w-20' : 'w-64'}
+        lg:translate-x-0
+        shadow-strong overflow-y-auto
+      `}>
         {/* Header */}
-        <div style={styles.sidebarHeader}>
-          {!isCollapsed && (
-            <div style={styles.logo}>
-              <span style={styles.logoIcon}>🏢</span>
-              <span style={styles.logoText}>FixLiya</span>
+        <div className="p-6 border-b border-white border-opacity-20">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className={`
+              font-bold text-xl
+              ${isCollapsed && !isMobile ? 'hidden' : 'block'}
+            `}>
+              🏠 Résident
+            </h2>
+            {!isMobile && (
+              <button
+                onClick={() => setIsCollapsed(!isCollapsed)}
+                className="p-2 hover:bg-white hover:bg-opacity-10 rounded-lg transition-colors"
+                aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              >
+                <span className="text-xl">{isCollapsed ? '→' : '←'}</span>
+              </button>
+            )}
+          </div>
+          
+          {(!isCollapsed || isMobile) && (
+            <div className="space-y-1">
+              <p className="font-semibold text-base truncate">{userName}</p>
+              <p className="text-sm text-white text-opacity-75 truncate">{userEmail}</p>
             </div>
           )}
-          <button
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            style={{
-              ...styles.collapseBtn,
-              display: isMobile ? 'none' : 'block'
-            }}
-            title={isCollapsed ? 'Développer' : 'Réduire'}
-          >
-            {isCollapsed ? '→' : '←'}
-          </button>
         </div>
 
         {/* Navigation Menu */}
-        <nav style={styles.nav}>
-          {menuItems.map(item => (
+        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-2">
+          {menuItems.map((item) => (
             <button
               key={item.id}
               onClick={() => handleNavigation(item.path)}
-              style={{
-                ...styles.navItem,
-                ...(isActive(item.path) && styles.navItemActive),
-                ...(item.highlight && styles.navItemHighlight),
-                justifyContent: isCollapsed ? 'center' : 'flex-start'
-              }}
-              title={isCollapsed ? item.label : undefined}
+              className={`
+                w-full flex items-center gap-3 px-4 py-3 rounded-lg
+                transition-all duration-200 group relative
+                ${isActive(item.path) 
+                  ? 'bg-white bg-opacity-20 shadow-md' 
+                  : 'hover:bg-white hover:bg-opacity-10'
+                }
+                ${item.highlight ? 'bg-success hover:bg-green-600' : ''}
+                ${isCollapsed && !isMobile ? 'justify-center' : ''}
+              `}
             >
-              <span style={styles.navIcon}>{item.icon}</span>
-              {!isCollapsed && (
+              <span className="text-2xl flex-shrink-0">{item.icon}</span>
+              
+              {(!isCollapsed || isMobile) && (
                 <>
-                  <span style={styles.navLabel}>{item.label}</span>
+                  <span className="flex-1 text-left font-medium">{item.label}</span>
+                  
                   {item.badge && (
-                    <span style={{
-                      ...styles.badge,
-                      backgroundColor: item.badgeColor || '#005596'
-                    }}>
-                      {item.badge}
+                    <span className={`
+                      inline-flex items-center justify-center min-w-[24px] h-6 px-2 rounded-full
+                      text-xs font-bold
+                      ${item.badgeColor === 'danger' ? 'bg-danger' : 'bg-white bg-opacity-30'}
+                    `}>
+                      {item.badge > 9 ? '9+' : item.badge}
                     </span>
                   )}
                 </>
               )}
-              {isCollapsed && item.badge && (
-                <span style={styles.badgeDot} />
+
+              {/* Badge pour mode collapsed */}
+              {isCollapsed && !isMobile && item.badge && (
+                <span className="absolute top-1 right-1 w-5 h-5 bg-danger rounded-full text-xs flex items-center justify-center font-bold">
+                  {item.badge > 9 ? '9' : item.badge}
+                </span>
               )}
             </button>
           ))}
         </nav>
 
-        {/* Footer avec info utilisateur */}
-        {!isCollapsed && (
-          <div style={styles.sidebarFooter}>
-            <div style={styles.userInfo}>
-              <div style={styles.userAvatar}>
-                {userName?.charAt(0).toUpperCase() || 'E'}
-              </div>
-              <div style={styles.userDetails}>
-                <div style={styles.userName}>{userName || 'Étudiant'}</div>
-                <div style={styles.userEmail}>{userEmail || ''}</div>
-              </div>
-            </div>
-            <button onClick={handleLogout} style={styles.logoutBtn}>
-              🚪 Déconnexion
-            </button>
-          </div>
-        )}
-
-        {isCollapsed && (
-          <button onClick={handleLogout} style={styles.logoutBtnCollapsed} title="Déconnexion">
-            🚪
+        {/* Footer - Logout */}
+        <div className="p-4 border-t border-white border-opacity-20">
+          <button
+            onClick={handleLogout}
+            className={`
+              w-full flex items-center gap-3 px-4 py-3 rounded-lg
+              bg-red-500 bg-opacity-80 hover:bg-opacity-100
+              transition-all duration-200
+              ${isCollapsed && !isMobile ? 'justify-center' : ''}
+            `}
+          >
+            <span className="text-2xl">🚪</span>
+            {(!isCollapsed || isMobile) && (
+              <span className="flex-1 text-left font-medium">Déconnexion</span>
+            )}
           </button>
-        )}
+        </div>
       </aside>
     </>
   );
 }
-
-const styles = {
-  // Mobile Toggle
-  mobileToggle: {
-    position: 'fixed',
-    top: '15px',
-    left: '15px',
-    zIndex: 1001,
-    backgroundColor: '#005596',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    width: '45px',
-    height: '45px',
-    fontSize: '20px',
-    cursor: 'pointer',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-  },
-
-  overlay: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    zIndex: 999
-  },
-
-  sidebar: {
-    position: 'fixed',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    backgroundColor: '#ffffff',
-    borderRight: '1px solid #e5e7eb',
-    display: 'flex',
-    flexDirection: 'column',
-    transition: 'width 0.3s ease, transform 0.3s ease',
-    zIndex: 1000,
-    boxShadow: '2px 0 10px rgba(0,0,0,0.05)',
-    overflowY: 'auto'
-  },
-
-  sidebarHeader: {
-    padding: '20px',
-    borderBottom: '1px solid #e5e7eb',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    minHeight: '70px'
-  },
-
-  logo: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px'
-  },
-
-  logoIcon: {
-    fontSize: '28px'
-  },
-
-  logoText: {
-    fontSize: '20px',
-    fontWeight: 'bold',
-    color: '#005596'
-  },
-
-  collapseBtn: {
-    backgroundColor: 'transparent',
-    border: 'none',
-    cursor: 'pointer',
-    fontSize: '18px',
-    color: '#6b7280',
-    padding: '5px',
-    display: 'none',
-    '@media (min-width: 769px)': {
-      display: 'block'
-    }
-  },
-
-  nav: {
-    flex: 1,
-    padding: '20px 10px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '5px'
-  },
-
-  navItem: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    padding: '12px 15px',
-    backgroundColor: 'transparent',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-    fontSize: '15px',
-    color: '#374151',
-    textAlign: 'left',
-    position: 'relative',
-    fontWeight: '500'
-  },
-
-  navItemActive: {
-    backgroundColor: '#eff6ff',
-    color: '#005596',
-    fontWeight: '600'
-  },
-
-  navItemHighlight: {
-    backgroundColor: '#005596',
-    color: 'white',
-    fontWeight: '600'
-  },
-
-  navIcon: {
-    fontSize: '20px',
-    minWidth: '20px',
-    textAlign: 'center'
-  },
-
-  navLabel: {
-    flex: 1
-  },
-
-  badge: {
-    backgroundColor: '#005596',
-    color: 'white',
-    fontSize: '11px',
-    fontWeight: 'bold',
-    padding: '2px 8px',
-    borderRadius: '12px',
-    minWidth: '20px',
-    textAlign: 'center'
-  },
-
-  badgeDot: {
-    position: 'absolute',
-    top: '8px',
-    right: '8px',
-    width: '8px',
-    height: '8px',
-    backgroundColor: '#ef4444',
-    borderRadius: '50%'
-  },
-
-  sidebarFooter: {
-    padding: '20px',
-    borderTop: '1px solid #e5e7eb'
-  },
-
-  userInfo: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    marginBottom: '15px'
-  },
-
-  userAvatar: {
-    width: '40px',
-    height: '40px',
-    borderRadius: '50%',
-    backgroundColor: '#005596',
-    color: 'white',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '18px',
-    fontWeight: 'bold'
-  },
-
-  userDetails: {
-    flex: 1,
-    overflow: 'hidden'
-  },
-
-  userName: {
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#1f2937',
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis'
-  },
-
-  userEmail: {
-    fontSize: '12px',
-    color: '#6b7280',
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis'
-  },
-
-  logoutBtn: {
-    width: '100%',
-    padding: '10px',
-    backgroundColor: '#fef2f2',
-    color: '#ef4444',
-    border: '1px solid #fecaca',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: '600',
-    transition: 'all 0.2s'
-  },
-
-  logoutBtnCollapsed: {
-    width: '50px',
-    height: '50px',
-    margin: '10px auto',
-    backgroundColor: '#fef2f2',
-    color: '#ef4444',
-    border: '1px solid #fecaca',
-    borderRadius: '50%',
-    cursor: 'pointer',
-    fontSize: '20px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center'
-  }
-};

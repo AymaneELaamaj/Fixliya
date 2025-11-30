@@ -13,6 +13,7 @@ export default function Register() {
     confirmPassword: ""
   });
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -26,56 +27,204 @@ export default function Register() {
       return setError("Les mots de passe ne correspondent pas.");
     }
 
+    if (formData.password.length < 6) {
+      return setError("Le mot de passe doit contenir au moins 6 caractères.");
+    }
+
+    setLoading(true);
     try {
       await registerUser(formData);
-      // Redirection vers le Login pour la "Connexion Unique" [cite: 19]
       navigate('/login'); 
     } catch (err) {
       console.error(err);
-      setError("Erreur lors de l'inscription. Vérifiez les champs.");
+      setError(err.message || "Erreur lors de l'inscription. Vérifiez les champs.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <h1 style={styles.title}>Inscription Étudiant</h1>
-        {error && <div style={styles.error}>{error}</div>}
-        
-        <form onSubmit={handleRegister} style={styles.form}>
-          <div style={styles.row}>
-            <input name="prenom" placeholder="Prénom" onChange={handleChange} style={styles.input} required />
-            <input name="nom" placeholder="Nom" onChange={handleChange} style={styles.input} required />
+    <div className="min-h-screen bg-gradient-to-br from-primary via-primary-dark to-secondary flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Pattern de fond */}
+      <div 
+        className="absolute inset-0 opacity-10"
+        style={{
+          backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
+          backgroundSize: '40px 40px'
+        }}
+      />
+      
+      <div className="w-full max-w-md relative z-10">
+        {/* Card */}
+        <div className="bg-white rounded-2xl shadow-strong p-8 md:p-10 animate-fade-in">
+          {/* Logo/Icône */}
+          <div className="flex justify-center mb-6">
+            <div className="w-16 h-16 bg-gradient-to-r from-primary to-primary-dark rounded-full flex items-center justify-center shadow-md">
+              <span className="text-white text-2xl font-bold">Fix</span>
+            </div>
           </div>
 
-          <input type="email" name="email" placeholder="Email étudiant" onChange={handleChange} style={styles.input} required />
-          
-          <input type="tel" name="telephone" placeholder="Téléphone" onChange={handleChange} style={styles.input} required />
+          {/* Titre */}
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 text-center mb-2">
+            Créer un compte
+          </h1>
+          <p className="text-gray-500 text-center text-sm mb-6">
+            Rejoignez la plateforme FixLiya
+          </p>
 
-          <input type="password" name="password" placeholder="Mot de passe" onChange={handleChange} style={styles.input} required />
-          <input type="password" name="confirmPassword" placeholder="Confirmer mot de passe" onChange={handleChange} style={styles.input} required />
+          {/* Message d'erreur */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 animate-fade-in">
+              <div className="flex items-center gap-2">
+                <span className="text-red-500">⚠️</span>
+                <span className="text-sm">{error}</span>
+              </div>
+            </div>
+          )}
 
-          <button type="submit" style={styles.button}>S'inscrire</button>
-        </form>
+          {/* Formulaire */}
+          <form onSubmit={handleRegister} className="space-y-4">
+            {/* Nom et Prénom sur la même ligne */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Prénom
+                </label>
+                <input
+                  type="text"
+                  name="prenom"
+                  value={formData.prenom}
+                  onChange={handleChange}
+                  placeholder="Prénom"
+                  className="input-field"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nom
+                </label>
+                <input
+                  type="text"
+                  name="nom"
+                  value={formData.nom}
+                  onChange={handleChange}
+                  placeholder="Nom"
+                  className="input-field"
+                  required
+                />
+              </div>
+            </div>
 
-        <p style={styles.footer}>
-          Déjà un compte ? <Link to="/login" style={styles.link}>Se connecter</Link>
-        </p>
+            {/* Email */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Email étudiant
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="exemple@university.ma"
+                className="input-field"
+                required
+              />
+            </div>
+
+            {/* Téléphone */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Téléphone
+              </label>
+              <input
+                type="tel"
+                name="telephone"
+                value={formData.telephone}
+                onChange={handleChange}
+                placeholder="+212 6XX XXX XXX"
+                className="input-field"
+                required
+              />
+            </div>
+
+            {/* Mot de passe */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Mot de passe
+              </label>
+              <input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="••••••••"
+                className="input-field"
+                required
+                minLength={6}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Minimum 6 caractères
+              </p>
+            </div>
+
+            {/* Confirmation mot de passe */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Confirmer le mot de passe
+              </label>
+              <input
+                type="password"
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                placeholder="••••••••"
+                className="input-field"
+                required
+              />
+            </div>
+
+            {/* Bouton Submit */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full btn-primary py-3 text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-lg mt-6"
+            >
+              {loading ? (
+                <div className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span>Création du compte...</span>
+                </div>
+              ) : (
+                "S'inscrire"
+              )}
+            </button>
+          </form>
+
+          {/* Footer - Lien vers Login */}
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600">
+              Vous avez déjà un compte ?{' '}
+              <Link 
+                to="/login" 
+                className="text-primary font-semibold hover:text-primary-dark transition-colors"
+              >
+                Se connecter
+              </Link>
+            </p>
+          </div>
+        </div>
+
+        {/* Message info en bas */}
+        <div className="mt-4 text-center">
+          <p className="text-white text-xs opacity-80">
+            En créant un compte, vous acceptez nos conditions d'utilisation
+          </p>
+        </div>
       </div>
     </div>
   );
 }
-
-const styles = {
-  container: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0f2f5' },
-  card: { width: '90%', maxWidth: '450px', backgroundColor: 'white', padding: '2rem', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', textAlign: 'center' },
-  title: { color: '#005596', marginBottom: '1.5rem', fontSize: '24px' },
-  form: { display: 'flex', flexDirection: 'column', gap: '1rem' },
-  row: { display: 'flex', gap: '10px' }, // Pour mettre Nom/Prénom côte à côte
-  input: { padding: '12px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', flex: 1 },
-  select: { padding: '12px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', flex: 1, backgroundColor: 'white' },
-  button: { padding: '14px', backgroundColor: '#005596', color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: '600', cursor: 'pointer', marginTop: '10px' },
-  error: { backgroundColor: '#fee2e2', color: '#991b1b', padding: '10px', borderRadius: '6px', marginBottom: '15px' },
-  footer: { marginTop: '1.5rem', fontSize: '14px', color: '#666' },
-  link: { color: '#005596', fontWeight: 'bold', textDecoration: 'none' }
-};
