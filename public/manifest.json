@@ -1,0 +1,26 @@
+{
+  "short_name": "FixLiya",
+  "name": "FixLiya - Maintenance",
+  "icons": [
+    {
+      "src": "vite.svg",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "pwa-192x192.png",
+      "type": "photo.jpeg",
+      "sizes": "192x192"
+    },
+    {
+      "src": "pwa-512x512.png",
+      "type": "photo.jpeg",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#005596",
+  "background_color": "#ffffff",
+  "orientation": "portrait"
+}
