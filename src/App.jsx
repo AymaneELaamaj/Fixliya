@@ -6,9 +6,11 @@ import StudentHome from './pages/StudentHome';
 import CreateTicket from './pages/CreateTicket';
 import StudentHistory from './pages/StudentHistory';
 import NotificationsPage from './pages/NotificationsPage';
+import TicketDetailPage from './pages/TicketDetailPage';
 import { AuthProvider } from './contexts/AuthContext';
 import AdminDashboard from './pages/AdminDashboard';
 import ArtisanHome from './pages/ArtisanHome';
+import ArtisanNotificationsPage from './pages/ArtisanNotificationsPage';
 
 function App() {
   return (
@@ -27,11 +29,13 @@ function App() {
           <Route path="/app/student/create-ticket" element={<CreateTicket />} />
           <Route path="/app/student/history" element={<StudentHistory />} />
           <Route path="/app/student/notifications" element={<NotificationsPage />} />
+          <Route path="/app/student/ticket/:ticketId" element={<TicketDetailPage />} />
           <Route path="/create-ticket" element={<CreateTicket />} />
           
           {/* Routes admin et artisan */}
           <Route path="/app/admin" element={<AdminDashboard />} />
           <Route path="/app/artisan" element={<ArtisanHome />} />
+          <Route path="/app/artisan/notifications" element={<ArtisanNotificationsPage />} />
 
         </Routes>
       </BrowserRouter>
