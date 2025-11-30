@@ -1,26 +1,20 @@
-import { db, storage } from "../firebase";
+import { db } from "../firebase";
 import { collection, addDoc, query, where, getDocs, doc, updateDoc, getDoc } from "firebase/firestore"; 
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { createNotification, NOTIFICATION_TYPES } from "./notificationService";
+import { createNotification, createArtisanNotification, NOTIFICATION_TYPES } from "./notificationService";
 
 
 export const getStudentTickets = async (studentId) => {
-  try {
-    const q = query(
-      collection(db, "tickets"), 
-      where("studentId", "==", studentId)
-    );
+  const q = query(
+    collection(db, "tickets"), 
+    where("studentId", "==", studentId)
+  );
 
-    const snapshot = await getDocs(q);
-    
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-
-  } catch (error) {
-    throw error;
-  }
+  const snapshot = await getDocs(q);
+  
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
 };
 
 /**
@@ -62,6 +56,8 @@ export const validateTicket = async (ticketId, rating, comment) => {
     
     const ticketData = ticketSnap.data();
     const studentId = ticketData.studentId;
+    const artisanId = ticketData.assignedToId;
+    const studentName = ticketData.studentName;
     
     await updateDoc(ticketRef, {
       status: "completed",
@@ -70,13 +66,23 @@ export const validateTicket = async (ticketId, rating, comment) => {
       validatedAt: new Date().toISOString()
     });
     
-    // Créer une notification de clôture
+    // Créer une notification de clôture pour l'étudiant
     if (studentId) {
       await createNotification(
         studentId,
         ticketId,
         NOTIFICATION_TYPES.CLOSED,
         { rating }
+      );
+    }
+    
+    // Créer une notification pour l'artisan avec la note
+    if (artisanId) {
+      await createArtisanNotification(
+        artisanId,
+        ticketId,
+        NOTIFICATION_TYPES.ARTISAN_RATED,
+        { rating, studentName }
       );
     }
   } catch (error) {

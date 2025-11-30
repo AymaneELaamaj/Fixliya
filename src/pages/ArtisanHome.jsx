@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
@@ -23,6 +23,16 @@ import {
  */
 export default function ArtisanHome() {
   const navigate = useNavigate();
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  // Gestion responsive
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Gestion des onglets
   const { activeTab, setActiveTab } = useTabs('todo');
@@ -47,19 +57,31 @@ export default function ArtisanHome() {
         setActiveTab={setActiveTab}
         onLogout={handleLogout}
         styles={artisanStyles}
+        isMobile={isMobile}
       />
 
       {/* MAIN CONTENT */}
-      <main style={artisanStyles.mainContent}>
+      <main style={{
+        ...artisanStyles.mainContent,
+        marginLeft: isMobile ? '0' : '260px',
+        padding: isMobile ? '15px' : '30px',
+        paddingBottom: isMobile ? '80px' : '30px' // Espace pour navbar mobile
+      }}>
         <Header
           activeTab={activeTab}
           missionsCount={missions.length}
           historyCount={history.length}
           styles={artisanStyles}
+          isMobile={isMobile}
         />
 
         {loading ? (
-          <p style={{ textAlign: 'center', marginTop: '20px', color: '#666', fontSize: '16px' }}>
+          <p style={{ 
+            textAlign: 'center', 
+            marginTop: '20px', 
+            color: '#666', 
+            fontSize: isMobile ? '14px' : '16px' 
+          }}>
             Chargement...
           </p>
         ) : (
@@ -73,9 +95,14 @@ export default function ArtisanHome() {
                     title="Aucune mission active !"
                     message="En attente de dispatch..."
                     styles={artisanStyles}
+                    isMobile={isMobile}
                   />
                 ) : (
-                  <div style={artisanStyles.cardGrid}>
+                  <div style={{
+                    ...artisanStyles.cardGrid,
+                    gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(400px, 1fr))',
+                    gap: isMobile ? '15px' : '20px'
+                  }}>
                     {missions.map(mission => (
                       <MissionCard
                         key={mission.id}
@@ -99,11 +126,16 @@ export default function ArtisanHome() {
                     title="Aucune intervention terminée"
                     message="Vos interventions complétées s'afficheront ici"
                     styles={artisanStyles}
+                    isMobile={isMobile}
                   />
                 ) : (
                   <>
-                    <HistoryStatsBar history={history} styles={artisanStyles} />
-                    <div style={artisanStyles.historyGrid}>
+                    <HistoryStatsBar history={history} styles={artisanStyles} isMobile={isMobile} />
+                    <div style={{
+                      ...artisanStyles.historyGrid,
+                      gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(350px, 1fr))',
+                      gap: isMobile ? '12px' : '15px'
+                    }}>
                       {history.map(item => (
                         <HistoryCard key={item.id} item={item} styles={artisanStyles} />
                       ))}
@@ -135,6 +167,8 @@ export default function ArtisanHome() {
           onSubmit={photoCapture.submitProof}
           setCurrentPhotoStep={photoCapture.setCurrentPhotoStep}
           styles={artisanStyles}
+          isMobile={isMobile}
+          isUploading={photoCapture.isUploading}
         />
       </main>
     </div>

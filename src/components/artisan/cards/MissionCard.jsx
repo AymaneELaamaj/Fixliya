@@ -1,11 +1,27 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 /**
  * Carte pour afficher une mission de l'artisan
  */
 export const MissionCard = ({ mission, onStart, onComplete, styles }) => {
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const hasBeforePhoto = !!mission.beforePhotoUrl;
+  const canComplete = hasBeforePhoto; // Peut terminer seulement si photo avant prise
+
   return (
-    <div style={styles.missionCard}>
+    <div style={{
+      ...styles.missionCard,
+      padding: isMobile ? '15px' : '20px'
+    }}>
       <div style={styles.cardHeader}>
         <span style={styles.categoryTag}>{mission.category}</span>
         {mission.isUrgent && <span style={styles.urgentBadge}>🚨 URGENT</span>}
@@ -26,33 +42,33 @@ export const MissionCard = ({ mission, onStart, onComplete, styles }) => {
       <div style={styles.locationRow}>📍 {mission.location}</div>
       <p style={styles.description}>{mission.description}</p>
       
-      {/* Afficher les photos si présentes */}
+      {/* Afficher les photos du résident si présentes */}
       {mission.imageUrls && mission.imageUrls.length > 0 && (
         <div style={{
           backgroundColor: '#f9fafb',
-          padding: '12px',
+          padding: isMobile ? '10px' : '12px',
           borderRadius: '8px',
           marginBottom: '12px',
           border: '1px solid #e5e7eb'
         }}>
           <p style={{
-            fontSize: '13px',
+            fontSize: isMobile ? '12px' : '13px',
             fontWeight: '700',
             color: '#374151',
             margin: '0 0 10px 0'
           }}>
-            📷 Photos du problème ({mission.imageUrls.length})
+            📷 Photos du résident ({mission.imageUrls.length})
           </p>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: '8px'
+            gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
+            gap: isMobile ? '6px' : '8px'
           }}>
             {mission.imageUrls.map((url, index) => (
               <img 
                 key={index} 
                 src={url} 
-                alt={`Photo ${index + 1}`} 
+                alt={`Photo résident ${index + 1}`} 
                 style={{
                   width: '100%',
                   aspectRatio: '1',
@@ -68,17 +84,17 @@ export const MissionCard = ({ mission, onStart, onComplete, styles }) => {
         </div>
       )}
 
-      {/* Afficher l'audio si présent */}
+      {/* Afficher l'audio du résident si présent */}
       {mission.audioUrl && (
         <div style={{
           backgroundColor: '#f9fafb',
-          padding: '12px',
+          padding: isMobile ? '10px' : '12px',
           borderRadius: '8px',
           marginBottom: '12px',
           border: '1px solid #e5e7eb'
         }}>
           <p style={{
-            fontSize: '13px',
+            fontSize: isMobile ? '12px' : '13px',
             fontWeight: '700',
             color: '#374151',
             margin: '0 0 10px 0'
@@ -89,7 +105,7 @@ export const MissionCard = ({ mission, onStart, onComplete, styles }) => {
             controls 
             style={{
               width: '100%',
-              height: '36px',
+              height: isMobile ? '32px' : '36px',
               borderRadius: '6px'
             }}
           >
@@ -98,15 +114,76 @@ export const MissionCard = ({ mission, onStart, onComplete, styles }) => {
           </audio>
         </div>
       )}
+
+      {/* Photo AVANT intervention (si prise) */}
+      {hasBeforePhoto && (
+        <div style={{
+          backgroundColor: '#ecfdf5',
+          padding: isMobile ? '10px' : '12px',
+          borderRadius: '8px',
+          marginBottom: '12px',
+          border: '2px solid #10b981'
+        }}>
+          <p style={{
+            fontSize: isMobile ? '12px' : '13px',
+            fontWeight: '700',
+            color: '#059669',
+            margin: '0 0 10px 0',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}>
+            ✅ Photo AVANT prise
+          </p>
+          <img 
+            src={mission.beforePhotoUrl} 
+            alt="Photo avant intervention" 
+            style={{
+              width: '100%',
+              maxWidth: '300px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              border: '2px solid #10b981'
+            }}
+            onClick={() => window.open(mission.beforePhotoUrl, '_blank')}
+          />
+        </div>
+      )}
       
       <div style={styles.studentInfo}>👤 {mission.studentName}</div>
 
-      <div style={styles.buttonGroup}>
-        <button onClick={() => onStart(mission)} style={styles.btnStart}>
-          ▶️ J'interviens
-        </button>
-        <button onClick={() => onComplete(mission)} style={styles.btnFinish}>
-          ✅ Terminer l'intervention
+      <div style={{
+        ...styles.buttonGroup,
+        flexDirection: isMobile ? 'column' : 'row',
+        gap: isMobile ? '10px' : '10px'
+      }}>
+        {!hasBeforePhoto && (
+          <button 
+            onClick={() => onStart(mission)} 
+            style={{
+              ...styles.btnStart,
+              width: isMobile ? '100%' : 'auto',
+              padding: isMobile ? '14px' : '12px 20px',
+              fontSize: isMobile ? '15px' : '14px'
+            }}
+          >
+            📸 Prendre photo AVANT
+          </button>
+        )}
+        <button 
+          onClick={() => onComplete(mission)} 
+          disabled={!canComplete}
+          style={{
+            ...styles.btnFinish,
+            width: isMobile ? '100%' : 'auto',
+            padding: isMobile ? '14px' : '12px 20px',
+            fontSize: isMobile ? '15px' : '14px',
+            opacity: canComplete ? 1 : 0.5,
+            cursor: canComplete ? 'pointer' : 'not-allowed',
+            backgroundColor: canComplete ? '#10b981' : '#9ca3af'
+          }}
+        >
+          {hasBeforePhoto ? '📸 Photo APRÈS & Terminer' : '🔒 Prendre photo AVANT d\'abord'}
         </button>
       </div>
     </div>

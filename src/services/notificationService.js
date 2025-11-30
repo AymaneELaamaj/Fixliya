@@ -20,7 +20,10 @@ export const NOTIFICATION_TYPES = {
   COMPLETED: 'completed',
   CLOSED: 'closed',
   CANCELLED: 'cancelled',
-  REASSIGNED: 'reassigned'
+  REASSIGNED: 'reassigned',
+  // Notifications artisan
+  ARTISAN_ASSIGNED: 'artisan_assigned',
+  ARTISAN_RATED: 'artisan_rated'
 };
 
 /**
@@ -38,7 +41,12 @@ const NOTIFICATION_MESSAGES = {
   [NOTIFICATION_TYPES.CANCELLED]: () => 
     `Votre réclamation a été annulée`,
   [NOTIFICATION_TYPES.REASSIGNED]: (ticketId, newArtisanName) => 
-    `Votre réclamation a été réassignée à ${newArtisanName}`
+    `Votre réclamation a été réassignée à ${newArtisanName}`,
+  // Messages artisan
+  [NOTIFICATION_TYPES.ARTISAN_ASSIGNED]: (ticketId, location, category) => 
+    `Nouveau ticket assigné : ${category} - ${location}`,
+  [NOTIFICATION_TYPES.ARTISAN_RATED]: (ticketId, rating, studentName) => 
+    `${studentName} a noté votre intervention : ${rating}/5 ⭐`
 };
 
 /**
@@ -47,7 +55,11 @@ const NOTIFICATION_MESSAGES = {
 export const createNotification = async (studentId, ticketId, type, additionalData = {}) => {
   try {
     const message = typeof NOTIFICATION_MESSAGES[type] === 'function'
-      ? NOTIFICATION_MESSAGES[type](ticketId, additionalData.artisanName || additionalData.newArtisanName)
+      ? NOTIFICATION_MESSAGES[type](
+          ticketId, 
+          additionalData.artisanName || additionalData.newArtisanName || additionalData.location || additionalData.category,
+          additionalData.category || additionalData.rating || additionalData.studentName
+        )
       : NOTIFICATION_MESSAGES[type](ticketId);
 
     const notification = {
@@ -64,6 +76,37 @@ export const createNotification = async (studentId, ticketId, type, additionalDa
     return true;
   } catch (error) {
     console.error("Erreur création notification:", error);
+    throw error;
+  }
+};
+
+/**
+ * Créer une notification pour un artisan
+ */
+export const createArtisanNotification = async (artisanId, ticketId, type, additionalData = {}) => {
+  try {
+    const message = typeof NOTIFICATION_MESSAGES[type] === 'function'
+      ? NOTIFICATION_MESSAGES[type](
+          ticketId, 
+          additionalData.location,
+          additionalData.category || additionalData.rating || additionalData.studentName
+        )
+      : NOTIFICATION_MESSAGES[type](ticketId);
+
+    const notification = {
+      artisanId,
+      ticketId,
+      type,
+      message,
+      read: false,
+      createdAt: Timestamp.now(),
+      ...additionalData
+    };
+
+    await addDoc(collection(db, "artisan_notifications"), notification);
+    return true;
+  } catch (error) {
+    console.error("Erreur création notification artisan:", error);
     throw error;
   }
 };
@@ -160,6 +203,65 @@ export const markAllNotificationsAsRead = async (studentId) => {
     await Promise.all(updatePromises);
   } catch (error) {
     console.error("Erreur marquage toutes notifications:", error);
+    throw error;
+  }
+};
+
+/**
+ * Récupérer les notifications d'un artisan
+ */
+export const getArtisanNotifications = async (artisanId) => {
+  try {
+    const q = query(
+      collection(db, "artisan_notifications"),
+      where("artisanId", "==", artisanId)
+    );
+    
+    const snapshot = await getDocs(q);
+    const notifications = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate() || new Date()
+    }));
+    
+    return notifications.sort((a, b) => b.createdAt - a.createdAt);
+  } catch (error) {
+    console.error("Erreur récupération notifications artisan:", error);
+    return [];
+  }
+};
+
+/**
+ * Compter les notifications non lues d'un artisan
+ */
+export const getArtisanUnreadCount = async (artisanId) => {
+  try {
+    const q = query(
+      collection(db, "artisan_notifications"),
+      where("artisanId", "==", artisanId),
+      where("read", "==", false)
+    );
+    
+    const snapshot = await getDocs(q);
+    return snapshot.size;
+  } catch (error) {
+    console.error("Erreur comptage notifications artisan:", error);
+    return 0;
+  }
+};
+
+/**
+ * Marquer notification artisan comme lue
+ */
+export const markArtisanNotificationAsRead = async (notificationId) => {
+  try {
+    const notifRef = doc(db, "artisan_notifications", notificationId);
+    await updateDoc(notifRef, {
+      read: true,
+      readAt: Timestamp.now()
+    });
+  } catch (error) {
+    console.error("Erreur marquage notification artisan:", error);
     throw error;
   }
 };

@@ -22,7 +22,9 @@ export const PhotoModal = ({
   onDeletePhoto,
   onSubmit,
   setCurrentPhotoStep,
-  styles
+  styles,
+  isMobile = false,
+  isUploading = false
 }) => {
   if (!showModal) return null;
 
@@ -33,10 +35,33 @@ export const PhotoModal = ({
 
   return (
     <div style={styles.modalOverlay} onClick={onClose}>
-      <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+      <div 
+        style={{
+          ...styles.modal,
+          width: isMobile ? '95%' : '700px',
+          maxWidth: isMobile ? '95%' : '700px',
+          padding: isMobile ? '15px' : '25px',
+          maxHeight: isMobile ? '90vh' : '85vh',
+          overflowY: 'auto'
+        }} 
+        onClick={(e) => e.stopPropagation()}
+      >
         <div style={styles.modalHeader}>
-          <h2 style={styles.modalTitle}>📸 Preuve d'Intervention</h2>
-          <button style={styles.closeBtn} onClick={onClose}>
+          <h2 style={{
+            ...styles.modalTitle,
+            fontSize: isMobile ? '18px' : '22px'
+          }}>
+            📸 Preuve d'Intervention
+          </h2>
+          <button 
+            style={{
+              ...styles.closeBtn,
+              fontSize: isMobile ? '24px' : '28px',
+              width: isMobile ? '32px' : '36px',
+              height: isMobile ? '32px' : '36px'
+            }} 
+            onClick={onClose}
+          >
             ✕
           </button>
         </div>
@@ -60,6 +85,7 @@ export const PhotoModal = ({
               onDelete={() => onDeletePhoto('before')}
               onContinue={() => setCurrentPhotoStep('after')}
               styles={styles}
+              isMobile={isMobile}
             />
           )}
 
@@ -80,6 +106,7 @@ export const PhotoModal = ({
               onRetake={onRetakePhoto}
               onDelete={() => onDeletePhoto('after')}
               styles={styles}
+              isMobile={isMobile}
             />
           )}
         </div>
@@ -87,15 +114,54 @@ export const PhotoModal = ({
         {/* FOOTER: Boutons de soumission */}
         <div style={styles.modalFooter}>
           {canSubmit ? (
-            <button style={styles.submitBtn} onClick={onSubmit}>
-              {photoMode === 'before-only' && '✅ Valider et commencer l\'intervention'}
-              {photoMode === 'after-only' && '✅ Terminer et envoyer les preuves'}
-              {photoMode === 'both' && '✅ Soumettre l\'intervention'}
+            <button 
+              style={{
+                ...styles.submitBtn,
+                fontSize: isMobile ? '14px' : '16px',
+                padding: isMobile ? '14px 20px' : '15px 30px',
+                opacity: isUploading ? 0.6 : 1,
+                cursor: isUploading ? 'not-allowed' : 'pointer'
+              }} 
+              onClick={onSubmit}
+              disabled={isUploading}
+            >
+              {isUploading ? (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'center' }}>
+                  <span style={{ 
+                    display: 'inline-block',
+                    width: '16px',
+                    height: '16px',
+                    border: '2px solid #fff',
+                    borderTopColor: 'transparent',
+                    borderRadius: '50%',
+                    animation: 'spin 0.8s linear infinite'
+                  }} />
+                  Envoi en cours...
+                </span>
+              ) : (
+                <>
+                  {photoMode === 'before-only' && '✅ Valider et commencer l\'intervention'}
+                  {photoMode === 'after-only' && '✅ Terminer et envoyer les preuves'}
+                  {photoMode === 'both' && '✅ Soumettre l\'intervention'}
+                </>
+              )}
             </button>
           ) : (
-            <p style={styles.footerHint}>⏳ Prenez la photo pour continuer...</p>
+            <p style={{
+              ...styles.footerHint,
+              fontSize: isMobile ? '13px' : '14px'
+            }}>
+              ⏳ Prenez la photo pour continuer...
+            </p>
           )}
-          <button style={styles.cancelBtn} onClick={onClose}>
+          <button 
+            style={{
+              ...styles.cancelBtn,
+              fontSize: isMobile ? '13px' : '14px',
+              padding: isMobile ? '10px 16px' : '12px 20px'
+            }} 
+            onClick={onClose}
+          >
             ✕ Fermer
           </button>
         </div>

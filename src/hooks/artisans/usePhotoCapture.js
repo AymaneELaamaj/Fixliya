@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
-import { auth } from '../../firebase';
-import { completeMission } from '../../services/artisanService';
+import { auth, storage } from '../../firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { completeMission, saveBeforePhoto } from '../../services/artisanService';
 
 /**
  * Hook pour gérer la capture de photos avant/après l'intervention
@@ -13,6 +14,7 @@ export const usePhotoCapture = (onSuccess) => {
   const [photoMode, setPhotoMode] = useState('before-only');
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
@@ -110,48 +112,91 @@ export const usePhotoCapture = (onSuccess) => {
   };
 
   const submitProof = async () => {
-    // Mode: seulement photo AVANT
-    if (photoMode === 'before-only' && proofPhotos.before) {
-      setShowProofModal(false);
-      setProofPhotos({ before: null, after: null });
-      return;
-    }
-
-    // Mode: seulement photo APRÈS
-    if (photoMode === 'after-only' && proofPhotos.after) {
-      if (!selectedMission) return;
-      try {
-        await completeMission(selectedMission.id, {
-          afterPhoto: proofPhotos.after.url,
-          completedAt: new Date().toISOString()
-        });
+    if (!selectedMission) return;
+    
+    setIsUploading(true);
+    
+    try {
+      // Mode: seulement photo AVANT (démarrage intervention)
+      if (photoMode === 'before-only' && proofPhotos.before) {
+        // Upload photo AVANT vers Firebase Storage
+        const beforePhotoRef = ref(
+          storage, 
+          `interventions/${selectedMission.id}/before_${Date.now()}.jpg`
+        );
+        await uploadBytes(beforePhotoRef, proofPhotos.before.blob);
+        const beforePhotoUrl = await getDownloadURL(beforePhotoRef);
+        
+        // Sauvegarder dans Firestore
+        await saveBeforePhoto(selectedMission.id, beforePhotoUrl);
+        
         setShowProofModal(false);
         setProofPhotos({ before: null, after: null });
         if (auth.currentUser && onSuccess) {
           await onSuccess(auth.currentUser.uid);
         }
-      } catch (error) {
-        console.error('Erreur soumission photo:', error);
+        return;
       }
-      return;
-    }
 
-    // Mode: les deux photos
-    if (photoMode === 'both' && proofPhotos.before && proofPhotos.after) {
-      if (!selectedMission) return;
-      try {
+      // Mode: seulement photo APRÈS (fin intervention)
+      if (photoMode === 'after-only' && proofPhotos.after) {
+        // Upload photo APRÈS vers Firebase Storage
+        const afterPhotoRef = ref(
+          storage, 
+          `interventions/${selectedMission.id}/after_${Date.now()}.jpg`
+        );
+        await uploadBytes(afterPhotoRef, proofPhotos.after.blob);
+        const afterPhotoUrl = await getDownloadURL(afterPhotoRef);
+        
+        // Compléter la mission avec notification
         await completeMission(selectedMission.id, {
-          afterPhoto: proofPhotos.after.url,
+          afterPhotoUrl: afterPhotoUrl,
           completedAt: new Date().toISOString()
         });
+        
         setShowProofModal(false);
         setProofPhotos({ before: null, after: null });
         if (auth.currentUser && onSuccess) {
           await onSuccess(auth.currentUser.uid);
         }
-      } catch (error) {
-        console.error('Erreur soumission photo:', error);
+        return;
       }
+
+      // Mode: les deux photos
+      if (photoMode === 'both' && proofPhotos.before && proofPhotos.after) {
+        // Upload les deux photos
+        const beforePhotoRef = ref(
+          storage, 
+          `interventions/${selectedMission.id}/before_${Date.now()}.jpg`
+        );
+        const afterPhotoRef = ref(
+          storage, 
+          `interventions/${selectedMission.id}/after_${Date.now()}.jpg`
+        );
+        
+        await uploadBytes(beforePhotoRef, proofPhotos.before.blob);
+        await uploadBytes(afterPhotoRef, proofPhotos.after.blob);
+        
+        const beforePhotoUrl = await getDownloadURL(beforePhotoRef);
+        const afterPhotoUrl = await getDownloadURL(afterPhotoRef);
+        
+        await completeMission(selectedMission.id, {
+          beforePhotoUrl: beforePhotoUrl,
+          afterPhotoUrl: afterPhotoUrl,
+          completedAt: new Date().toISOString()
+        });
+        
+        setShowProofModal(false);
+        setProofPhotos({ before: null, after: null });
+        if (auth.currentUser && onSuccess) {
+          await onSuccess(auth.currentUser.uid);
+        }
+      }
+    } catch (error) {
+      console.error('Erreur upload photos:', error);
+      alert('Erreur lors de l\'envoi des photos. Veuillez réessayer.');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -168,6 +213,7 @@ export const usePhotoCapture = (onSuccess) => {
     photoMode,
     isCameraOpen,
     previewPhoto,
+    isUploading,
     videoRef,
     canvasRef,
     setCurrentPhotoStep,

@@ -1,9 +1,8 @@
-// src/services/adminService.js
 import { db } from "../firebase";
 import { collection, query, getDocs, doc, updateDoc, where, setDoc, deleteDoc, getDoc } from "firebase/firestore";
 import { initializeApp, getApp, deleteApp } from "firebase/app";
 import { getAuth, createUserWithEmailAndPassword, signOut } from "firebase/auth";
-import { createNotification, NOTIFICATION_TYPES } from "./notificationService";
+import { createNotification, createArtisanNotification, NOTIFICATION_TYPES } from "./notificationService";
 
 // Récupération dynamique de la config pour le "Ghost App"
 let firebaseConfig;
@@ -57,6 +56,17 @@ export const assignTicket = async (ticketId, artisanId, artisanName) => {
       { artisanName }
     );
   }
+  
+  // Créer une notification pour l'artisan
+  await createArtisanNotification(
+    artisanId,
+    ticketId,
+    NOTIFICATION_TYPES.ARTISAN_ASSIGNED,
+    { 
+      location: ticketData.location,
+      category: ticketData.category
+    }
+  );
 };
 
 /**

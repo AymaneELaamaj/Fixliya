@@ -27,9 +27,25 @@ export const getMyMissions = async (artisanId) => {
 };
 
 /**
+ * Sauvegarder la photo AVANT intervention
+ */
+export const saveBeforePhoto = async (ticketId, beforePhotoUrl) => {
+  try {
+    const ticketRef = doc(db, "tickets", ticketId);
+    await updateDoc(ticketRef, {
+      beforePhotoUrl: beforePhotoUrl,
+      interventionStartedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error("Erreur sauvegarde photo avant:", error);
+    throw error;
+  }
+};
+
+/**
  * 2. Terminer une intervention avec preuve photos
  * L'artisan doit fournir les photos avant/après
- * Envoie une notification à l'étudiant pour validation
+ * Envoie une notification à l'étudiant ET à l'admin
  */
 export const completeMission = async (ticketId, proofData) => {
   try {
@@ -45,14 +61,20 @@ export const completeMission = async (ticketId, proofData) => {
     const ticketData = ticketSnap.data();
     const studentId = ticketData.studentId;
     
-    // N'envoyer que la photo APRÈS (pas la photo AVANT)
-    // La photo AVANT reste locale chez l'artisan
-    await updateDoc(ticketRef, {
+    // Mettre à jour avec les photos et le statut
+    const updateData = {
       status: "termine_artisan",
       dateFin: new Date().toISOString(),
-      afterPhoto: proofData.afterPhoto,  // Seulement la photo APRÈS
+      afterPhotoUrl: proofData.afterPhotoUrl,
       completedAt: proofData.completedAt
-    });
+    };
+    
+    // Ajouter beforePhotoUrl si fourni
+    if (proofData.beforePhotoUrl) {
+      updateData.beforePhotoUrl = proofData.beforePhotoUrl;
+    }
+    
+    await updateDoc(ticketRef, updateData);
 
     // Créer une notification pour l'étudiant
     if (studentId) {
