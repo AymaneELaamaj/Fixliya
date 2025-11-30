@@ -1,7 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
+
+// --- IMPORTS POUR NOTIFS ---
+import { requestForToken, onMessageListener, db } from '../firebase';
+import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
 
 // Hooks
 import { useArtisanData, useTabs, usePhotoCapture } from '../hooks/artisans';
@@ -18,32 +22,47 @@ import {
   artisanStyles
 } from '../components/artisan';
 
-/**
- * Page d'accueil de l'espace artisan
- */
 export default function ArtisanHome() {
   const navigate = useNavigate();
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-
-  // Gestion responsive
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  // Gestion des onglets
   const { activeTab, setActiveTab } = useTabs('todo');
-
-  // Chargement des données
   const { missions, history, loading, loadData } = useArtisanData(navigate);
-
-  // Capture de photos
   const photoCapture = usePhotoCapture(loadData);
 
-  // Déconnexion
+  // --- LOGIQUE NOTIFICATION ---
+  useEffect(() => {
+    onMessageListener().then(payload => {
+      // Petit son ou alerte visuelle quand l'artisan a l'app ouverte
+      alert(`🔔 Nouvelle mission : ${payload.notification.body}`);
+      // On recharge les données pour afficher la nouvelle mission immédiatement
+      if (auth.currentUser) {
+        loadData(auth.currentUser.uid);
+      }
+    }).catch(err => console.log('Erreur listener', err));
+  }, []);
+
+  // --- FONCTION D'ACTIVATION CORRIGÉE ---
+  const enableNotifications = async () => {
+    console.log("Tentative d'activation...");
+    
+    // 1. Demander le token
+    const token = await requestForToken();
+    
+    // 2. Si on a le token, on sauvegarde
+    if (token && auth.currentUser) {
+      try {
+        const userRef = doc(db, "users", auth.currentUser.uid);
+        await updateDoc(userRef, { fcmTokens: arrayUnion(token) });
+        alert("✅ Succès ! Votre téléphone recevra les missions.");
+      } catch (error) {
+        console.error("Erreur sauvegarde token", error);
+        alert("❌ Erreur technique lors de la sauvegarde : " + error.message);
+      }
+    } else {
+      // 3. Si pas de token (C'est ici que ça bloquait silencieusement avant)
+      alert("❌ Impossible d'activer les notifications.\n\nCauses possibles :\n1. Vous avez cliqué sur 'Bloquer' (Réinitialisez les permissions)\n2. Vous êtes en Navigation Privée\n3. Sur iPhone : L'app n'est pas ajoutée à l'écran d'accueil");
+    }
+  };
+
   const handleLogout = async () => {
     await signOut(auth);
     navigate('/login');
@@ -51,58 +70,61 @@ export default function ArtisanHome() {
 
   return (
     <div style={artisanStyles.pageContainer}>
-      {/* SIDEBAR */}
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onLogout={handleLogout}
         styles={artisanStyles}
-        isMobile={isMobile}
       />
 
-      {/* MAIN CONTENT */}
-      <main style={{
-        ...artisanStyles.mainContent,
-        marginLeft: isMobile ? '0' : '260px',
-        padding: isMobile ? '15px' : '30px',
-        paddingBottom: isMobile ? '80px' : '30px' // Espace pour navbar mobile
-      }}>
-        <Header
-          activeTab={activeTab}
-          missionsCount={missions.length}
-          historyCount={history.length}
-          styles={artisanStyles}
-          isMobile={isMobile}
-        />
+      <main style={artisanStyles.mainContent}>
+        
+        {/* HEADER MODIFIÉ AVEC LE BOUTON */}
+        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
+            <Header
+            activeTab={activeTab}
+            missionsCount={missions.length}
+            historyCount={history.length}
+            styles={{...artisanStyles, header: {marginBottom: 0, borderBottom: 'none'}}} 
+            />
+            
+            <button 
+            onClick={enableNotifications}
+            style={{
+                padding: '10px 15px',
+                backgroundColor: '#059669', // Vert pour l'artisan
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+            }}
+            >
+            🔔 Activer Alertes
+            </button>
+        </div>
+        <div style={{borderBottom: '2px solid #e5e7eb', marginBottom: '30px'}}></div>
+
 
         {loading ? (
-          <p style={{ 
-            textAlign: 'center', 
-            marginTop: '20px', 
-            color: '#666', 
-            fontSize: isMobile ? '14px' : '16px' 
-          }}>
-            Chargement...
-          </p>
+          <p style={{ textAlign: 'center', marginTop: '20px', color: '#666' }}>Chargement...</p>
         ) : (
           <>
-            {/* Onglet: Ma Journée */}
             {activeTab === 'todo' && (
               <div style={artisanStyles.section}>
                 {missions.length === 0 ? (
                   <EmptyState
                     icon="☕"
-                    title="Aucune mission active !"
+                    title="Aucune mission"
                     message="En attente de dispatch..."
                     styles={artisanStyles}
-                    isMobile={isMobile}
                   />
                 ) : (
-                  <div style={{
-                    ...artisanStyles.cardGrid,
-                    gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(400px, 1fr))',
-                    gap: isMobile ? '15px' : '20px'
-                  }}>
+                  <div style={artisanStyles.cardGrid}>
                     {missions.map(mission => (
                       <MissionCard
                         key={mission.id}
@@ -117,25 +139,19 @@ export default function ArtisanHome() {
               </div>
             )}
 
-            {/* Onglet: Historique */}
             {activeTab === 'history' && (
               <div style={artisanStyles.section}>
                 {history.length === 0 ? (
                   <EmptyState
                     icon="📭"
-                    title="Aucune intervention terminée"
-                    message="Vos interventions complétées s'afficheront ici"
+                    title="Historique vide"
+                    message="Vos missions terminées apparaîtront ici"
                     styles={artisanStyles}
-                    isMobile={isMobile}
                   />
                 ) : (
                   <>
-                    <HistoryStatsBar history={history} styles={artisanStyles} isMobile={isMobile} />
-                    <div style={{
-                      ...artisanStyles.historyGrid,
-                      gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(350px, 1fr))',
-                      gap: isMobile ? '12px' : '15px'
-                    }}>
+                    <HistoryStatsBar history={history} styles={artisanStyles} />
+                    <div style={artisanStyles.historyGrid}>
                       {history.map(item => (
                         <HistoryCard key={item.id} item={item} styles={artisanStyles} />
                       ))}
@@ -147,7 +163,6 @@ export default function ArtisanHome() {
           </>
         )}
 
-        {/* MODALE DE PHOTOS */}
         <PhotoModal
           showModal={photoCapture.showProofModal}
           selectedMission={photoCapture.selectedMission}
@@ -167,8 +182,6 @@ export default function ArtisanHome() {
           onSubmit={photoCapture.submitProof}
           setCurrentPhotoStep={photoCapture.setCurrentPhotoStep}
           styles={artisanStyles}
-          isMobile={isMobile}
-          isUploading={photoCapture.isUploading}
         />
       </main>
     </div>
