@@ -341,7 +341,10 @@ export default function CreateTicket() {
         </div>
       ) : (
         <div style={styles.card}>
-        <h2 style={styles.title}>Nouvel Incident</h2>
+        <h2 style={styles.title}>🔧 Nouveau Signalement</h2>
+        <p style={{textAlign: 'center', color: '#6b7280', fontSize: '14px', marginBottom: '25px', marginTop: '-15px'}}>
+          Décrivez votre problème et ajoutez des preuves visuelles ou audio
+        </p>
         
         <form onSubmit={handleSubmit} style={styles.form}>
           
@@ -544,7 +547,20 @@ export default function CreateTicket() {
 
           {/* Section Photos */}
           <div style={styles.mediaSection}>
-            <h3 style={styles.mediaTitle}>📷 Photos du problème (max 3)</h3>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
+              <h3 style={{...styles.mediaTitle, margin: 0}}>📷 Photos du problème</h3>
+              <span style={{
+                fontSize: '13px', 
+                fontWeight: '700', 
+                color: photos.length >= 3 ? '#059669' : '#6b7280',
+                backgroundColor: photos.length >= 3 ? '#d1fae5' : '#f3f4f6',
+                padding: '6px 12px',
+                borderRadius: '20px',
+                border: `2px solid ${photos.length >= 3 ? '#10b981' : '#d1d5db'}`
+              }}>
+                {photos.length}/3
+              </span>
+            </div>
 
             {/* Afficher la caméra si active */}
             {isCameraActive && (
@@ -564,10 +580,10 @@ export default function CreateTicket() {
                 />
                 <div style={styles.mediaButtons}>
                   <button type="button" onClick={capturePhoto} style={styles.captureBtn}>
-                    📸 Capturer
+                    📸 Capturer la photo
                   </button>
                   <button type="button" onClick={stopCamera} style={styles.cancelBtn}>
-                    ✖️ Annuler
+                    ❌ Annuler
                   </button>
                 </div>
               </div>
@@ -579,6 +595,19 @@ export default function CreateTicket() {
                 {photos.map((photo, index) => (
                   <div key={index} style={styles.photoItem}>
                     <img src={photo.preview} alt={`Photo ${index + 1}`} style={styles.photoThumb} />
+                    <div style={{
+                      position: 'absolute',
+                      top: '8px',
+                      left: '8px',
+                      backgroundColor: 'rgba(0,0,0,0.7)',
+                      color: 'white',
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      fontSize: '11px',
+                      fontWeight: '700'
+                    }}>
+                      #{index + 1}
+                    </div>
                     <button
                       type="button"
                       onClick={() => deletePhoto(index)}
@@ -595,10 +624,10 @@ export default function CreateTicket() {
             {!isCameraActive && photos.length < 3 && (
               <div style={styles.photoActions}>
                 <button type="button" onClick={startCamera} style={styles.primaryBtn}>
-                  📸 Prendre une photo
+                  📸 Ouvrir la caméra
                 </button>
                 <label htmlFor="file-upload" style={styles.uploadBtn}>
-                  📁 Choisir des fichiers
+                  📁 Importer des photos
                 </label>
                 <input
                   id="file-upload"
@@ -612,59 +641,206 @@ export default function CreateTicket() {
             )}
 
             {photos.length === 0 && !isCameraActive && (
-              <p style={styles.photoPlaceholderText}>Aucune photo ajoutée</p>
+              <div style={{
+                textAlign: 'center',
+                padding: '30px 20px',
+                backgroundColor: '#f9fafb',
+                borderRadius: '12px',
+                border: '2px dashed #d1d5db',
+                marginTop: '10px'
+              }}>
+                <div style={{fontSize: '48px', marginBottom: '10px'}}>📷</div>
+                <p style={styles.photoPlaceholderText}>Aucune photo ajoutée</p>
+                <p style={{fontSize: '12px', color: '#9ca3af', margin: 0}}>
+                  Ajoutez des photos pour illustrer le problème
+                </p>
+              </div>
             )}
 
             {photos.length > 0 && (
               <p style={styles.successText}>
-                ✓ {photos.length} photo(s) ajoutée(s) ({3 - photos.length} restante(s))
+                ✓ {photos.length} photo(s) prête(s) • {3 - photos.length} place(s) disponible(s)
               </p>
             )}
           </div>
 
           {/* Section Audio */}
           <div style={styles.mediaSection}>
-            <h3 style={styles.mediaTitle}>🎙️ Enregistrement vocal</h3>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
+              <h3 style={{...styles.mediaTitle, margin: 0}}>🎙️ Enregistrement vocal</h3>
+              {audioFile && (
+                <span style={{
+                  fontSize: '13px', 
+                  fontWeight: '700', 
+                  color: '#059669',
+                  backgroundColor: '#d1fae5',
+                  padding: '6px 12px',
+                  borderRadius: '20px',
+                  border: '2px solid #10b981'
+                }}>
+                  ✓ Prêt
+                </span>
+              )}
+            </div>
             
             {!audioFile ? (
               <>
-                <div style={styles.mediaButtons}>
-                  {!isRecording ? (
+                {!isRecording ? (
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '30px 20px',
+                    backgroundColor: '#f9fafb',
+                    borderRadius: '12px',
+                    border: '2px dashed #d1d5db',
+                    marginBottom: '12px'
+                  }}>
+                    <div style={{fontSize: '48px', marginBottom: '10px'}}>🎤</div>
+                    <p style={{fontSize: '14px', color: '#6b7280', margin: '0 0 15px 0', fontWeight: '600'}}>
+                      Enregistrez un message vocal
+                    </p>
+                    <p style={{fontSize: '12px', color: '#9ca3af', margin: '0 0 20px 0'}}>
+                      Décrivez le problème avec vos propres mots
+                    </p>
                     <button type="button" onClick={startAudioRecording} style={styles.mediaBtn}>
-                      🎤 Commencer l'enregistrement
+                      🎤 Démarrer l'enregistrement
                     </button>
-                  ) : (
-                    <button type="button" onClick={stopAudioRecording} style={{...styles.mediaBtn, backgroundColor: '#ef4444'}}>
+                  </div>
+                ) : (
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '30px 20px',
+                    backgroundColor: '#fef2f2',
+                    borderRadius: '12px',
+                    border: '2px solid #ef4444',
+                    marginBottom: '12px',
+                    animation: 'pulse 2s infinite'
+                  }}>
+                    <div style={{fontSize: '48px', marginBottom: '10px'}}>🔴</div>
+                    <p style={{fontSize: '16px', color: '#dc2626', margin: '0 0 15px 0', fontWeight: '700'}}>
+                      🔴 Enregistrement en cours...
+                    </p>
+                    <p style={{fontSize: '13px', color: '#991b1b', margin: '0 0 20px 0'}}>
+                      Parlez clairement dans votre microphone
+                    </p>
+                    <button 
+                      type="button" 
+                      onClick={stopAudioRecording} 
+                      style={{
+                        ...styles.mediaBtn, 
+                        background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                        boxShadow: '0 4px 16px rgba(239, 68, 68, 0.4)'
+                      }}
+                    >
                       ⏹️ Arrêter l'enregistrement
                     </button>
-                  )}
-                </div>
-                {isRecording && <p style={{...styles.successText, color: '#ef4444'}}>🔴 Enregistrement en cours...</p>}
+                  </div>
+                )}
               </>
             ) : (
               <>
-                <div style={styles.audioPlayer}>
+                <div style={{
+                  backgroundColor: 'white',
+                  padding: '20px',
+                  borderRadius: '12px',
+                  border: '2px solid #e5e7eb',
+                  marginBottom: '12px'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    marginBottom: '12px'
+                  }}>
+                    <div style={{
+                      width: '40px',
+                      height: '40px',
+                      backgroundColor: '#d1fae5',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '20px'
+                    }}>
+                      🎵
+                    </div>
+                    <div style={{flex: 1}}>
+                      <p style={{margin: 0, fontSize: '14px', fontWeight: '700', color: '#1f2937'}}>
+                        Message vocal enregistré
+                      </p>
+                      <p style={{margin: 0, fontSize: '12px', color: '#6b7280'}}>
+                        Écoutez votre enregistrement ci-dessous
+                      </p>
+                    </div>
+                  </div>
                   <audio 
                     src={getAudioURL()} 
                     controls 
-                    style={styles.audioControls}
+                    style={{...styles.audioControls, borderRadius: '8px'}}
                   />
                 </div>
                 <div style={styles.mediaButtons}>
-                  <button type="button" onClick={deleteAudioRecording} style={{...styles.mediaBtn, backgroundColor: '#ef4444'}}>
+                  <button 
+                    type="button" 
+                    onClick={deleteAudioRecording} 
+                    style={{
+                      ...styles.mediaBtn, 
+                      background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                      boxShadow: '0 4px 16px rgba(239, 68, 68, 0.4)'
+                    }}
+                  >
                     🗑️ Supprimer
                   </button>
-                  <button type="button" onClick={startAudioRecording} style={{...styles.mediaBtn, backgroundColor: '#f59e0b'}}>
-                    🔄 Enregistrer de nouveau
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      deleteAudioRecording();
+                      setTimeout(startAudioRecording, 300);
+                    }} 
+                    style={{
+                      ...styles.mediaBtn, 
+                      background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                      boxShadow: '0 4px 16px rgba(245, 158, 11, 0.4)'
+                    }}
+                  >
+                    🔄 Réenregistrer
                   </button>
                 </div>
-                <p style={styles.successText}>✓ Audio prêt à être envoyé</p>
+                <p style={styles.successText}>
+                  ✓ Audio prêt à être envoyé avec votre signalement
+                </p>
               </>
             )}
           </div>
 
-          <button type="submit" style={styles.submitBtn} disabled={loading}>
-            {loading ? "Envoi en cours..." : "Signaler le problème"}
+          <button 
+            type="submit" 
+            style={{
+              ...styles.submitBtn,
+              opacity: loading ? 0.7 : 1,
+              cursor: loading ? 'not-allowed' : 'pointer',
+              position: 'relative',
+              overflow: 'hidden'
+            }} 
+            disabled={loading}
+          >
+            {loading ? (
+              <span style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'}}>
+                <span style={{
+                  width: '20px',
+                  height: '20px',
+                  border: '3px solid rgba(255,255,255,0.3)',
+                  borderTop: '3px solid white',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite',
+                  display: 'inline-block'
+                }}></span>
+                Envoi en cours...
+              </span>
+            ) : (
+              <span style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'}}>
+                🚀 Envoyer le signalement
+              </span>
+            )}
           </button>
         </form>
         </div>
@@ -674,59 +850,411 @@ export default function CreateTicket() {
 }
 
 const styles = {
-  container: { padding: '20px', backgroundColor: '#f0f2f5', minHeight: '100vh', display: 'flex', justifyContent: 'center' },
-  card: { backgroundColor: 'white', padding: '20px', borderRadius: '12px', width: '100%', maxWidth: '500px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' },
-  disabledCard: { backgroundColor: 'white', padding: '40px', borderRadius: '12px', width: '100%', maxWidth: '400px', textAlign: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' },
-  disabledIconLarge: { fontSize: '60px', marginBottom: '20px' },
-  disabledTitle: { fontSize: '24px', color: '#dc2626', fontWeight: 'bold', margin: '0 0 15px 0' },
+  container: { 
+    padding: '20px', 
+    backgroundColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+    minHeight: '100vh', 
+    display: 'flex', 
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    paddingTop: '40px'
+  },
+  card: { 
+    backgroundColor: 'white', 
+    padding: '30px', 
+    borderRadius: '20px', 
+    width: '100%', 
+    maxWidth: '600px', 
+    boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+    animation: 'slideUp 0.5s ease-out'
+  },
+  disabledCard: { 
+    backgroundColor: 'white', 
+    padding: '40px', 
+    borderRadius: '20px', 
+    width: '100%', 
+    maxWidth: '400px', 
+    textAlign: 'center', 
+    boxShadow: '0 20px 60px rgba(0,0,0,0.3)' 
+  },
+  disabledIconLarge: { fontSize: '80px', marginBottom: '20px' },
+  disabledTitle: { fontSize: '28px', color: '#dc2626', fontWeight: 'bold', margin: '0 0 15px 0' },
   disabledMessage: { fontSize: '16px', color: '#991b1b', fontWeight: '600', margin: '0 0 10px 0' },
   disabledDescription: { fontSize: '14px', color: '#7f1d1d', margin: '0 0 25px 0', lineHeight: '1.6' },
-  backBtn: { backgroundColor: '#6b7280', color: 'white', border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease' },
-  title: { color: '#005596', marginBottom: '20px', textAlign: 'center' },
-  form: { display: 'flex', flexDirection: 'column', gap: '15px' },
-  label: { fontWeight: 'bold', fontSize: '14px', color: '#333' },
-  smallLabel: { fontWeight: 'bold', fontSize: '13px', color: '#333', marginBottom: '5px', display: 'block' },
-  grid: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' },
-  locationGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' },
-  catButton: { padding: '10px', border: '1px solid #ddd', borderRadius: '8px', background: 'white', cursor: 'pointer' },
-  catButtonActive: { padding: '10px', border: '2px solid #005596', borderRadius: '8px', background: '#e6f0fa', color: '#005596', fontWeight: 'bold', cursor: 'pointer' },
-  locationButton: { padding: '12px', border: '1px solid #ddd', borderRadius: '8px', background: 'white', cursor: 'pointer', fontSize: '13px', fontWeight: '500' },
-  locationButtonActive: { padding: '12px', border: '2px solid #10b981', borderRadius: '8px', background: '#ecfdf5', color: '#10b981', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' },
-  typeGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' },
-  typeButton: { padding: '12px', border: '1px solid #ddd', borderRadius: '8px', background: 'white', cursor: 'pointer', fontSize: '13px', fontWeight: '500' },
-  typeButtonActive: { padding: '12px', border: '2px solid #ef4444', borderRadius: '8px', background: '#fee2e2', color: '#dc2626', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' },
-  schedulingSection: { backgroundColor: '#f9fafb', padding: '12px', borderRadius: '8px', border: '1px solid #e5e7eb' },
-  locationSection: { backgroundColor: '#f9fafb', padding: '12px', borderRadius: '8px', border: '1px solid #e5e7eb' },
-  row: { display: 'flex', gap: '10px' },
+  backBtn: { 
+    backgroundColor: '#6b7280', 
+    color: 'white', 
+    border: 'none', 
+    padding: '14px 28px', 
+    borderRadius: '12px', 
+    fontSize: '15px', 
+    fontWeight: 'bold', 
+    cursor: 'pointer', 
+    transition: 'all 0.3s ease',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+  },
+  title: { 
+    color: '#1f2937', 
+    marginBottom: '25px', 
+    textAlign: 'center',
+    fontSize: '28px',
+    fontWeight: '800',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    backgroundClip: 'text'
+  },
+  form: { display: 'flex', flexDirection: 'column', gap: '20px' },
+  label: { 
+    fontWeight: '700', 
+    fontSize: '15px', 
+    color: '#1f2937',
+    marginBottom: '8px',
+    display: 'block'
+  },
+  smallLabel: { fontWeight: '600', fontSize: '13px', color: '#374151', marginBottom: '6px', display: 'block' },
+  grid: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' },
+  locationGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' },
+  catButton: { 
+    padding: '14px', 
+    border: '2px solid #e5e7eb', 
+    borderRadius: '12px', 
+    background: 'white', 
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: '600',
+    transition: 'all 0.3s ease',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+  },
+  catButtonActive: { 
+    padding: '14px', 
+    border: '2px solid #667eea', 
+    borderRadius: '12px', 
+    background: 'linear-gradient(135deg, #667eea15 0%, #764ba215 100%)', 
+    color: '#667eea', 
+    fontWeight: 'bold', 
+    cursor: 'pointer',
+    fontSize: '14px',
+    boxShadow: '0 4px 16px rgba(102, 126, 234, 0.3)',
+    transform: 'translateY(-2px)'
+  },
+  locationButton: { 
+    padding: '14px', 
+    border: '2px solid #e5e7eb', 
+    borderRadius: '12px', 
+    background: 'white', 
+    cursor: 'pointer', 
+    fontSize: '13px', 
+    fontWeight: '600',
+    transition: 'all 0.3s ease',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+  },
+  locationButtonActive: { 
+    padding: '14px', 
+    border: '2px solid #10b981', 
+    borderRadius: '12px', 
+    background: 'linear-gradient(135deg, #10b98115 0%, #059669 15 100%)', 
+    color: '#059669', 
+    fontWeight: 'bold', 
+    cursor: 'pointer', 
+    fontSize: '13px',
+    boxShadow: '0 4px 16px rgba(16, 185, 129, 0.3)',
+    transform: 'translateY(-2px)'
+  },
+  typeGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' },
+  typeButton: { 
+    padding: '14px', 
+    border: '2px solid #e5e7eb', 
+    borderRadius: '12px', 
+    background: 'white', 
+    cursor: 'pointer', 
+    fontSize: '13px', 
+    fontWeight: '600',
+    transition: 'all 0.3s ease',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+  },
+  typeButtonActive: { 
+    padding: '14px', 
+    border: '2px solid #ef4444', 
+    borderRadius: '12px', 
+    background: 'linear-gradient(135deg, #ef444415 0%, #dc262615 100%)', 
+    color: '#dc2626', 
+    fontWeight: 'bold', 
+    cursor: 'pointer', 
+    fontSize: '13px',
+    boxShadow: '0 4px 16px rgba(239, 68, 68, 0.3)',
+    transform: 'translateY(-2px)'
+  },
+  schedulingSection: { 
+    backgroundColor: '#f9fafb', 
+    padding: '16px', 
+    borderRadius: '12px', 
+    border: '2px solid #e5e7eb' 
+  },
+  locationSection: { 
+    backgroundColor: '#f9fafb', 
+    padding: '16px', 
+    borderRadius: '12px', 
+    border: '2px solid #e5e7eb' 
+  },
+  row: { display: 'flex', gap: '12px' },
   inputGroup: { flex: 1 },
-  select: { width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '13px', backgroundColor: 'white' },
-  selectInput: { width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '13px' },
-  urgentBox: { display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#fee2e2', padding: '10px', borderRadius: '8px', border: '1px solid #ef4444' },
+  select: { 
+    width: '100%', 
+    padding: '12px', 
+    borderRadius: '10px', 
+    border: '2px solid #e5e7eb', 
+    fontSize: '14px', 
+    backgroundColor: 'white',
+    fontWeight: '500',
+    transition: 'all 0.3s ease'
+  },
+  selectInput: { 
+    width: '100%', 
+    padding: '12px', 
+    borderRadius: '10px', 
+    border: '2px solid #e5e7eb', 
+    fontSize: '14px',
+    fontWeight: '500',
+    transition: 'all 0.3s ease'
+  },
+  urgentBox: { 
+    display: 'flex', 
+    alignItems: 'center', 
+    gap: '12px', 
+    backgroundColor: '#fee2e2', 
+    padding: '12px', 
+    borderRadius: '12px', 
+    border: '2px solid #ef4444' 
+  },
   urgentLabel: { color: '#991b1b', fontWeight: 'bold', fontSize: '14px' },
-  textarea: { padding: '10px', borderRadius: '8px', border: '1px solid #ddd', minHeight: '80px' },
-  input: { padding: '10px' },
-  mediaSection: { backgroundColor: '#f9fafb', padding: '15px', borderRadius: '8px', border: '1px solid #e5e7eb' },
-  mediaTitle: { margin: '0 0 10px 0', color: '#005596', fontSize: '16px', fontWeight: 'bold' },
-  cameraContainer: { marginBottom: '15px' },
-  video: { width: '100%', maxHeight: '400px', borderRadius: '8px', marginBottom: '10px', backgroundColor: '#000', display: 'block', objectFit: 'cover' },
-  audioPlayer: { backgroundColor: 'white', padding: '12px', borderRadius: '6px', border: '1px solid #ddd', marginBottom: '10px' },
-  audioControls: { width: '100%', height: '32px' },
-  mediaButtons: { display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' },
-  mediaBtn: { padding: '10px 12px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer', fontWeight: 'bold', flex: '1', minWidth: '100px' },
-  successText: { color: '#16a34a', fontWeight: 'bold', fontSize: '13px', margin: '5px 0 0 0' },
-  submitBtn: { padding: '15px', backgroundColor: '#005596', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer' },
-  // Nouveaux styles pour les photos
-  photoPlaceholderText: { color: '#6b7280', fontSize: '14px', margin: '10px 0', textAlign: 'center' },
-  primaryBtn: { padding: '12px 24px', backgroundColor: '#005596', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease', flex: 1 },
-  captureBtn: { padding: '12px 24px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', flex: '1', minWidth: '120px' },
-  cancelBtn: { padding: '12px 24px', backgroundColor: '#6b7280', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', flex: '1', minWidth: '120px' },
-  photosGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '15px' },
-  photoItem: { position: 'relative', aspectRatio: '1', borderRadius: '8px', overflow: 'hidden', border: '2px solid #e5e7eb' },
-  photoThumb: { width: '100%', height: '100%', objectFit: 'cover' },
-  photoDeleteBtn: { position: 'absolute', top: '5px', right: '5px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  photoActions: { display: 'flex', gap: '10px', marginBottom: '10px' },
-  uploadBtn: { padding: '12px 24px', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease', flex: 1, textAlign: 'center', display: 'inline-block' },
-  // Nouveaux styles pour le système de locaux
-  helpText: { display: 'block', fontSize: '12px', color: '#666', marginTop: '5px', fontStyle: 'italic' },
-  noDataText: { color: '#f59e0b', fontSize: '13px', margin: '10px 0', padding: '10px', backgroundColor: '#fff7ed', borderRadius: '6px', border: '1px solid #fed7aa' }
+  textarea: { 
+    padding: '12px', 
+    borderRadius: '12px', 
+    border: '2px solid #e5e7eb', 
+    minHeight: '100px',
+    fontSize: '14px',
+    fontFamily: 'inherit',
+    resize: 'vertical',
+    transition: 'all 0.3s ease'
+  },
+  input: { padding: '12px' },
+  mediaSection: { 
+    backgroundColor: 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)', 
+    padding: '20px', 
+    borderRadius: '16px', 
+    border: '2px solid #e5e7eb',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+  },
+  mediaTitle: { 
+    margin: '0 0 15px 0', 
+    color: '#1f2937', 
+    fontSize: '18px', 
+    fontWeight: '700',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px'
+  },
+  cameraContainer: { 
+    marginBottom: '15px',
+    borderRadius: '16px',
+    overflow: 'hidden',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+    position: 'relative'
+  },
+  video: { 
+    width: '100%', 
+    maxHeight: '400px', 
+    backgroundColor: '#000', 
+    display: 'block', 
+    objectFit: 'cover' 
+  },
+  audioPlayer: { 
+    backgroundColor: 'white', 
+    padding: '16px', 
+    borderRadius: '12px', 
+    border: '2px solid #e5e7eb', 
+    marginBottom: '12px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+  },
+  audioControls: { width: '100%', height: '40px' },
+  mediaButtons: { 
+    display: 'flex', 
+    flexWrap: 'wrap', 
+    gap: '10px', 
+    marginBottom: '10px',
+    marginTop: '15px'
+  },
+  mediaBtn: { 
+    padding: '12px 16px', 
+    backgroundColor: '#667eea', 
+    color: 'white', 
+    border: 'none', 
+    borderRadius: '12px', 
+    fontSize: '14px', 
+    cursor: 'pointer', 
+    fontWeight: '700', 
+    flex: '1', 
+    minWidth: '120px',
+    transition: 'all 0.3s ease',
+    boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '6px'
+  },
+  successText: { 
+    color: '#059669', 
+    fontWeight: '700', 
+    fontSize: '14px', 
+    margin: '8px 0 0 0',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px'
+  },
+  submitBtn: { 
+    padding: '16px', 
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+    color: 'white', 
+    border: 'none', 
+    borderRadius: '14px', 
+    fontWeight: 'bold', 
+    fontSize: '17px', 
+    cursor: 'pointer',
+    transition: 'all 0.3s ease',
+    boxShadow: '0 8px 24px rgba(102, 126, 234, 0.4)',
+    marginTop: '10px'
+  },
+  photoPlaceholderText: { 
+    color: '#9ca3af', 
+    fontSize: '14px', 
+    margin: '15px 0', 
+    textAlign: 'center',
+    fontStyle: 'italic'
+  },
+  primaryBtn: { 
+    padding: '12px 20px', 
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+    color: 'white', 
+    border: 'none', 
+    borderRadius: '12px', 
+    fontSize: '14px', 
+    fontWeight: '700', 
+    cursor: 'pointer', 
+    transition: 'all 0.3s ease', 
+    flex: 1,
+    boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '6px'
+  },
+  captureBtn: { 
+    padding: '14px 20px', 
+    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', 
+    color: 'white', 
+    border: 'none', 
+    borderRadius: '12px', 
+    fontSize: '15px', 
+    fontWeight: '700', 
+    cursor: 'pointer', 
+    flex: '1', 
+    minWidth: '130px',
+    boxShadow: '0 4px 16px rgba(16, 185, 129, 0.4)',
+    transition: 'all 0.3s ease'
+  },
+  cancelBtn: { 
+    padding: '14px 20px', 
+    background: 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)', 
+    color: 'white', 
+    border: 'none', 
+    borderRadius: '12px', 
+    fontSize: '15px', 
+    fontWeight: '700', 
+    cursor: 'pointer', 
+    flex: '1', 
+    minWidth: '130px',
+    boxShadow: '0 4px 16px rgba(107, 114, 128, 0.3)',
+    transition: 'all 0.3s ease'
+  },
+  photosGrid: { 
+    display: 'grid', 
+    gridTemplateColumns: 'repeat(3, 1fr)', 
+    gap: '12px', 
+    marginBottom: '15px' 
+  },
+  photoItem: { 
+    position: 'relative', 
+    aspectRatio: '1', 
+    borderRadius: '12px', 
+    overflow: 'hidden', 
+    border: '3px solid #e5e7eb',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+    transition: 'all 0.3s ease'
+  },
+  photoThumb: { 
+    width: '100%', 
+    height: '100%', 
+    objectFit: 'cover',
+    transition: 'transform 0.3s ease'
+  },
+  photoDeleteBtn: { 
+    position: 'absolute', 
+    top: '8px', 
+    right: '8px', 
+    backgroundColor: '#ef4444', 
+    color: 'white', 
+    border: 'none', 
+    borderRadius: '50%', 
+    width: '28px', 
+    height: '28px', 
+    cursor: 'pointer', 
+    fontSize: '14px', 
+    display: 'flex', 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+    fontWeight: 'bold',
+    transition: 'all 0.3s ease'
+  },
+  photoActions: { 
+    display: 'flex', 
+    gap: '12px', 
+    marginBottom: '12px' 
+  },
+  uploadBtn: { 
+    padding: '12px 20px', 
+    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', 
+    color: 'white', 
+    border: 'none', 
+    borderRadius: '12px', 
+    fontSize: '14px', 
+    fontWeight: '700', 
+    cursor: 'pointer', 
+    transition: 'all 0.3s ease', 
+    flex: 1, 
+    textAlign: 'center', 
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '6px',
+    boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)'
+  },
+  helpText: { 
+    display: 'block', 
+    fontSize: '12px', 
+    color: '#6b7280', 
+    marginTop: '6px', 
+    fontStyle: 'italic' 
+  },
+  noDataText: { 
+    color: '#d97706', 
+    fontSize: '13px', 
+    margin: '10px 0', 
+    padding: '12px', 
+    backgroundColor: '#fff7ed', 
+    borderRadius: '10px', 
+    border: '2px solid #fed7aa',
+    fontWeight: '600'
+  }
 };

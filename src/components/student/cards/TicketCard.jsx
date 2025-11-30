@@ -64,6 +64,42 @@ export default function TicketCard({ ticket, onValidate, onCancel, onArchive, ca
           📍 {ticket.location}
         </p>
 
+        {/* Afficher les photos si présentes */}
+        {ticket.imageUrls && ticket.imageUrls.length > 0 && (
+          <div style={defaultStyles.mediaSection}>
+            <p style={defaultStyles.mediaSectionTitle}>📷 Photos ({ticket.imageUrls.length})</p>
+            <div style={defaultStyles.photosGrid}>
+              {ticket.imageUrls.map((url, index) => (
+                <img 
+                  key={index} 
+                  src={url} 
+                  alt={`Photo ${index + 1}`} 
+                  style={defaultStyles.photoThumb}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(url, '_blank');
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Afficher l'audio si présent */}
+        {ticket.audioUrl && (
+          <div style={defaultStyles.mediaSection}>
+            <p style={defaultStyles.mediaSectionTitle}>🎙️ Message vocal</p>
+            <audio 
+              controls 
+              style={defaultStyles.audioPlayer}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <source src={ticket.audioUrl} type="audio/mp3" />
+              Votre navigateur ne supporte pas l'audio.
+            </audio>
+          </div>
+        )}
+
         {/* Afficher l'artisan assigné */}
         {ticket.assignedToName && (
           <p style={defaultStyles.artisan}>
@@ -214,6 +250,47 @@ const defaultStyles = {
     color: '#059669',
     margin: '0 0 12px 0',
     fontWeight: '600'
+  },
+
+  mediaSection: {
+    backgroundColor: '#f9fafb',
+    padding: '12px',
+    borderRadius: '8px',
+    marginBottom: '12px',
+    border: '1px solid #e5e7eb'
+  },
+
+  mediaSectionTitle: {
+    fontSize: '13px',
+    fontWeight: '700',
+    color: '#374151',
+    margin: '0 0 10px 0'
+  },
+
+  photosGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: '8px'
+  },
+
+  photoThumb: {
+    width: '100%',
+    aspectRatio: '1',
+    objectFit: 'cover',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    border: '2px solid #e5e7eb',
+    transition: 'transform 0.2s, border-color 0.2s',
+    '&:hover': {
+      transform: 'scale(1.05)',
+      borderColor: '#667eea'
+    }
+  },
+
+  audioPlayer: {
+    width: '100%',
+    height: '36px',
+    borderRadius: '6px'
   },
 
   cardFooter: {

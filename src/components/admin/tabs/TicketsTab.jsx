@@ -197,7 +197,38 @@ function TicketRow({ ticket, artisans, onAssign, onExternalize }) {
       <td className={styles.tdCell}>{ticket.location || 'N/A'}</td>
 
       {/* Description */}
-      <td className={`${styles.tdCell} ${styles.descriptionCell}`}>{ticket.description}</td>
+      <td className={`${styles.tdCell} ${styles.descriptionCell}`}>
+        <div>
+          {ticket.description}
+          {/* Indicateurs de médias */}
+          <div style={{display: 'flex', gap: '6px', marginTop: '6px'}}>
+            {ticket.imageUrls && ticket.imageUrls.length > 0 && (
+              <span style={{
+                fontSize: '11px',
+                backgroundColor: '#dbeafe',
+                color: '#1e40af',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                fontWeight: '600'
+              }}>
+                📷 {ticket.imageUrls.length} photo{ticket.imageUrls.length > 1 ? 's' : ''}
+              </span>
+            )}
+            {ticket.audioUrl && (
+              <span style={{
+                fontSize: '11px',
+                backgroundColor: '#fef3c7',
+                color: '#92400e',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                fontWeight: '600'
+              }}>
+                🎙️ Audio
+              </span>
+            )}
+          </div>
+        </div>
+      </td>
 
       {/* Planification */}
       <td className={styles.tdCell}>
